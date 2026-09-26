@@ -58,10 +58,17 @@ function matches(text: string, pattern: RegExp): string[] {
 /** "seven", "7" and "7:00" are the same number; "7:30" stays distinct. */
 const normalizeNumber = (n: string): string => NUMBER_WORDS[n.toLowerCase()] ?? n.replace(",", ".").replace(/^(\d{1,2})[:.]00$/, "$1");
 
+/** "the long one", "that one", "a new one": "one" as a pronoun, not a quantity. */
+const PRONOUN_ONE = /\b(?:the|this|that|a|an|each|every|any|no|which|another|some|other)\s+(?:\w+\s+)?one\b/gi;
+
+function numbers(text: string): string[] {
+  return matches(text.replace(PRONOUN_ONE, " "), NUMBER).map(normalizeNumber);
+}
+
 export function extractSlots(text: string): Slot[] {
   const slots: Slot[] = [];
   if (matches(text, NEGATION).length) slots.push({ kind: "negation", value: "negation" });
-  for (const n of new Set(matches(text, NUMBER).map(normalizeNumber))) slots.push({ kind: "number", value: n });
+  for (const n of new Set(numbers(text))) slots.push({ kind: "number", value: n });
   for (const t of new Set(matches(text, TIME))) slots.push({ kind: "time", value: t });
   if (matches(text, CONDITION).length) slots.push({ kind: "condition", value: "condition" });
   for (const n of new Set(extractNames(text))) slots.push({ kind: "name", value: n });

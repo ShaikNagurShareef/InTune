@@ -21,6 +21,10 @@ describe("critical slots", () => {
     expect(diffSlots("start at seven", "start at 7:00").lost).toEqual([]);
     expect(diffSlots("start at 7", "start at 7:30").lost.map((s) => s.value)).toEqual(["7"]);
   });
+  it("doesn't read “one” as a number when it means a thing", () => {
+    expect(diffSlots("let's not do the long one", "let's not do the long game").lost).toEqual([]);
+    expect(diffSlots("bring one chair", "bring a chair").lost.map((s) => s.value)).toEqual(["1"]);
+  });
   it("keeps conditions", () => {
     expect(extractSlots("Only if it is quiet").some((s) => s.kind === "condition")).toBe(true);
   });
