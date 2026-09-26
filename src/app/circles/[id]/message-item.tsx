@@ -32,6 +32,12 @@ interface Props {
 
 const AUTO_TRANSLATE_MIN_WORDS = 4;
 
+/** Automatic translations run one at a time across the page, so a busy chat doesn't burst the AI quota. */
+let autoQueue: Promise<unknown> = Promise.resolve();
+function enqueueAuto(task: () => Promise<void>): void {
+  autoQueue = autoQueue.then(task, task);
+}
+
 export function MessageItem({ message: m, replyTo, audioRate, showSender, startsGroup, endsGroup, autoTranslate, onReply, onHide, onChanged }: Props) {
   const hasKey = useAiAvailable();
   const canSpeak = useSpeechAvailable();
@@ -56,7 +62,7 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, starts
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) {
         observer.disconnect();
-        void fetchAid(false);
+        enqueueAuto(() => fetchAid(false));
       }
     });
     observer.observe(el);

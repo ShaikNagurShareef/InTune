@@ -59,7 +59,7 @@ export async function simplifyForReader(
   }
   await rateLimit(`simplify:${userId}`, SIMPLIFY_LIMIT_PER_HOUR, 3600);
   const started = Date.now();
-  const { data } = await generateJson(
+  const { data, model } = await generateJson(
     creds,
     { system: SIMPLIFY_SYSTEM, parts: [{ text: JSON.stringify({ message: message.text }) }] },
     simplifyOutput,
@@ -80,10 +80,10 @@ export async function simplifyForReader(
     simplifiedText: data.simplified_text.trim(),
     warnings,
     summary,
-    modelId: creds.model,
+    modelId: model,
   };
   await db().insert(readingAids).values(aid).onConflictDoNothing();
-  void recordEvent("simplify", { ms: Date.now() - started, warnings: warnings.length, model: creds.model });
+  void recordEvent("simplify", { ms: Date.now() - started, warnings: warnings.length, model });
   return {
     messageId,
     messageVersion: aid.messageVersion,

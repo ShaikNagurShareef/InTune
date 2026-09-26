@@ -62,7 +62,7 @@ const toView = (job: Job): JobView => ({
   errorCode: job.errorCode,
 });
 
-function makeDeps(job: Job, creds: GeminiCredentials, signal: AbortSignal): AssistDeps {
+function makeDeps(job: Job, creds: GeminiCredentials, signal: AbortSignal, used: { model: string }): AssistDeps {
   return {
     creds,
     signal,
@@ -74,8 +74,11 @@ function makeDeps(job: Job, creds: GeminiCredentials, signal: AbortSignal): Assi
     async onStage(stage) {
       await db().update(jobs).set({ stage, updatedAt: new Date() }).where(eq(jobs.id, job.id));
     },
-    onModelCall(node, ms, repaired) {
-      void recordEvent("model_call", { node, ms, repaired, model: creds.model, prompt: PROMPT_VERSION });
+    onModelCall(node, ms, repaired, model) {
+      used.model = model;
+      void recordEvent("model_call", { node, ms, repaired, model, prompt: PROMPT_VERSION });
+      // Record the model that actually answered (it may be a fallback), for honest assist results.
+      void db().update(jobs).set({ modelId: model }).where(eq(jobs.id, job.id)).catch(() => undefined);
     },
   };
 }
@@ -118,7 +121,7 @@ function buildResult(state: AssistStateType, inputVersion: number, model: string
  * Applies a graph outcome only if the draft is still at the version the job started from and the job
  * was not cancelled. Late or superseded output is discarded (FR27).
  */
-async function applyOutcome(job: Job, state: AssistStateType, pending: AssistInterrupt | null): Promise<Job> {
+async function applyOutcome(job: Job, state: AssistStateType, pending: AssistInterrupt | null, modelUsed: string): Promise<Job> {
   return db().transaction(async (tx) => {
     const [fresh] = await tx.select().from(jobs).where(eq(jobs.id, job.id)).for("update");
     const [draft] = await tx.select().from(drafts).where(eq(drafts.id, job.draftId)).for("update");
@@ -163,7 +166,7 @@ async function applyOutcome(job: Job, state: AssistStateType, pending: AssistInt
       return waiting;
     }
     const nextVersion = draft.version + 1;
-    const result = buildResult(state, nextVersion, fresh.modelId ?? "");
+    const result = buildResult(state, nextVersion, modelUsed || fresh.modelId || "");
     await tx
       .update(drafts)
       .set({
@@ -193,7 +196,8 @@ async function runSegment(
 ): Promise<JobView> {
   const deadline = AbortSignal.timeout(JOB_DEADLINE_MS);
   const signal = clientSignal ? AbortSignal.any([clientSignal, deadline]) : deadline;
-  const graph = buildAssistGraph(makeDeps(job, creds, signal), await getCheckpointer());
+  const used = { model: "" };
+  const graph = buildAssistGraph(makeDeps(job, creds, signal, used), await getCheckpointer());
   const config = { configurable: { thread_id: job.id }, signal };
   const started = Date.now();
   try {
@@ -215,7 +219,7 @@ async function runSegment(
   const snapshot = await graph.getState(config);
   const pending = (snapshot.tasks.flatMap((t) => t.interrupts ?? [])[0]?.value ?? null) as AssistInterrupt | null;
   const state = snapshot.values as AssistStateType;
-  const applied = await applyOutcome(job, state, pending);
+  const applied = await applyOutcome(job, state, pending, used.model);
   if (state.mediaId && (state.transcript || state.manualReason)) await eraseMedia(state.mediaId);
   void recordEvent("assist_outcome", {
     outcome: applied.status,

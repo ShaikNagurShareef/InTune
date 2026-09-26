@@ -19,6 +19,7 @@ interface Props {
 }
 
 const NEAR_BOTTOM_PX = 120;
+const AUTO_TRANSLATE_LATEST = 3;
 const GROUP_GAP_MS = 5 * 60 * 1000;
 const SEPARATOR_GAP_MS = 30 * 60 * 1000;
 
@@ -54,6 +55,15 @@ export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, a
   }, [older, seen, latest.messages]);
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
   const visible = messages.filter((m) => !hidden.has(m.id));
+  // Auto-translate only the newest few incoming messages, to stay within the AI quota.
+  const autoIds = new Set(
+    autoTranslate
+      ? visible
+          .filter((m) => !m.mine && !m.deleted)
+          .slice(-AUTO_TRANSLATE_LATEST)
+          .map((m) => m.id)
+      : [],
+  );
   const newestId = visible.at(-1)?.id;
 
   useEffect(() => {
@@ -143,7 +153,7 @@ export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, a
                   replyTo={m.replyToId ? byId.get(m.replyToId) : undefined}
                   audioRate={audioRate}
                   showSender={showSenders}
-                  autoTranslate={autoTranslate}
+                  autoTranslate={autoIds.has(m.id)}
                   startsGroup={startsGroup}
                   endsGroup={endsGroup}
                   onReply={onReply}

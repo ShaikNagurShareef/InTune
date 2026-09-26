@@ -52,6 +52,8 @@ export interface GenerateRequest {
   parts: Part[];
   jsonSchema: unknown;
   signal?: AbortSignal;
+  /** Reports which model actually answered (for honest diagnostics and assist results). */
+  onModel?: (model: string) => void;
 }
 
 /** 2.5 Flash can switch thinking off; newer models think by default, so give them room beyond the visible answer. */
@@ -61,63 +63,87 @@ function generationLimits(model: string) {
 }
 
 const THINKING_HEADROOM = 5;
-const EXCLUDED_VARIANTS = /(lite|image|tts|live|audio|embedding|exp|preview|thinking|8b)/;
 
-/** Picks the newest stable Flash model this key can call (e.g. gemini-3-flash over gemini-2.5-flash). */
-export function pickModel(names: string[]): string | null {
-  const flash = names.filter((n) => n.includes("flash") && !EXCLUDED_VARIANTS.test(n));
-  const versioned = flash
-    .map((n) => ({ n, v: Number(/^gemini-(\d+(?:\.\d+)?)-flash$/.exec(n)?.[1] ?? NaN) }))
-    .filter((x) => !Number.isNaN(x.v))
-    .sort((a, b) => b.v - a.v);
-  return versioned[0]?.n ?? (flash.includes("gemini-flash-latest") ? "gemini-flash-latest" : (flash[0] ?? null));
+/**
+ * Orders the Flash models a key can call: newest stable version first, then the "latest" alias, then
+ * lighter variants as a last resort. Each model has its own capacity and quota, so later entries are
+ * fallbacks when one is overloaded (503) or out of quota (429).
+ */
+export function rankModels(names: string[]): string[] {
+  const flash = names.filter((n) => n.includes("flash") && !/(image|tts|live|audio|embedding|exp|preview|thinking|8b)/.test(n));
+  const version = (n: string) => Number(/^gemini-(\d+(?:\.\d+)?)-flash/.exec(n)?.[1] ?? NaN);
+  const stable = flash
+    .filter((n) => /^gemini-\d+(?:\.\d+)?-flash$/.test(n))
+    .sort((a, b) => version(b) - version(a));
+  const latest = flash.filter((n) => n === "gemini-flash-latest");
+  const lite = flash
+    .filter((n) => /^gemini-\d+(?:\.\d+)?-flash-lite$/.test(n) || n === "gemini-flash-lite-latest")
+    .sort((a, b) => (version(b) || 0) - (version(a) || 0));
+  return [...new Set([...stable, ...latest, ...lite])];
 }
 
-const modelCache = new Map<string, Promise<string>>();
+export function pickModel(names: string[]): string | null {
+  return rankModels(names)[0] ?? null;
+}
 
-/** Resolves (and caches per key, per server instance) which model to use unless the person chose one. */
-async function resolveModel(creds: GeminiCredentials): Promise<string> {
-  if (creds.explicitModel) return creds.model;
-  const cacheKey = createHash("sha256").update(creds.apiKey).digest("hex");
-  let pending = modelCache.get(cacheKey);
+const MAX_MODEL_CANDIDATES = 3;
+const modelCache = new Map<string, Promise<string[]>>();
+const cacheKeyFor = (creds: GeminiCredentials) => createHash("sha256").update(creds.apiKey).digest("hex");
+
+/** Candidate models for this key (cached per server instance) unless the person chose one explicitly. */
+async function resolveModels(creds: GeminiCredentials): Promise<string[]> {
+  if (creds.explicitModel) return [creds.model];
+  const key = cacheKeyFor(creds);
+  let pending = modelCache.get(key);
   if (!pending) {
     pending = listModels(creds.apiKey)
-      .then((names) => pickModel(names) ?? creds.model)
-      .catch(() => creds.model);
-    modelCache.set(cacheKey, pending);
+      .then((names) => {
+        const ranked = rankModels(names).slice(0, MAX_MODEL_CANDIDATES);
+        return ranked.length ? ranked : [creds.model];
+      })
+      .catch(() => [creds.model]);
+    modelCache.set(key, pending);
   }
   return pending;
 }
 
-function forgetModel(creds: GeminiCredentials): void {
-  modelCache.delete(createHash("sha256").update(creds.apiKey).digest("hex"));
-}
+/** Errors worth trying the next model for: retired (404), out of quota (429) or overloaded (5xx). */
+const tryNextModel = (err: unknown) => {
+  const status = statusOf(err);
+  return status === 404 || status === 429 || (status !== null && status >= 500);
+};
 
 const liveTransport: GeminiTransport = {
   async generate(creds, req) {
     const ai = new GoogleGenAI({ apiKey: creds.apiKey });
-    const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
-    const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
-    const model = await resolveModel(creds);
-    try {
-      const res = await ai.models.generateContent({
-        model,
-        contents: [{ role: "user", parts: req.parts }],
-        config: {
-          systemInstruction: req.system,
-          responseMimeType: "application/json",
-          responseJsonSchema: req.jsonSchema,
-          temperature: 0.2,
-          ...generationLimits(model),
-          abortSignal: signal,
-        },
-      });
-      return res.text ?? "";
-    } catch (err) {
-      // A retired or unavailable model: re-pick on the next attempt.
-      if (statusOf(err) === 404) forgetModel(creds);
-      throw err;
+    const candidates = await resolveModels(creds);
+    let lastError: unknown = null;
+    for (const model of candidates) {
+      const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
+      const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+      try {
+        const res = await ai.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: req.parts }],
+          config: {
+            systemInstruction: req.system,
+            responseMimeType: "application/json",
+            responseJsonSchema: req.jsonSchema,
+            temperature: 0.2,
+            ...generationLimits(model),
+            abortSignal: signal,
+          },
+        });
+        req.onModel?.(model);
+        return res.text ?? "";
+      } catch (err) {
+        if (req.signal?.aborted || !tryNextModel(err)) throw err;
+        logProviderError(err);
+        if (statusOf(err) === 404) modelCache.delete(cacheKeyFor(creds));
+        lastError = err;
+      }
     }
+    throw lastError ?? new Error("No Gemini model available");
   },
 };
 
@@ -189,6 +215,8 @@ function tryParse<T>(raw: string, schema: ZodType<T>): T | null {
 export interface JsonCallResult<T> {
   data: T;
   repaired: boolean;
+  /** The model that actually produced the answer. */
+  model: string;
 }
 
 /** Schema-validated call with exactly one bounded repair attempt, then a manual fallback error (NFR05). */
@@ -198,20 +226,24 @@ export async function generateJson<T>(
   schema: ZodType<T>,
 ): Promise<JsonCallResult<T>> {
   const jsonSchema = z.toJSONSchema(schema, { target: "draft-7" });
-  const first = await withRetry(() => activeTransport().generate(creds, { ...req, jsonSchema }), req.signal);
+  let model = creds.model;
+  const onModel = (m: string) => {
+    model = m;
+  };
+  const first = await withRetry(() => activeTransport().generate(creds, { ...req, jsonSchema, onModel }), req.signal);
   const parsed = tryParse(first, schema);
-  if (parsed) return { data: parsed, repaired: false };
+  if (parsed) return { data: parsed, repaired: false, model };
 
   const repairParts: Part[] = [
     ...req.parts,
     { text: `Your previous reply was not valid JSON for the schema. Reply again with only valid JSON.` },
   ];
   const second = await withRetry(
-    () => activeTransport().generate(creds, { ...req, parts: repairParts, jsonSchema }),
+    () => activeTransport().generate(creds, { ...req, parts: repairParts, jsonSchema, onModel }),
     req.signal,
   );
   const repaired = tryParse(second, schema);
-  if (repaired) return { data: repaired, repaired: true };
+  if (repaired) return { data: repaired, repaired: true, model };
   throw new AppError("ai_malformed", "Wording help returned an unusable answer. Please edit your message directly.");
 }
 

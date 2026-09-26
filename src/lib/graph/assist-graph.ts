@@ -45,7 +45,7 @@ export interface AssistDeps {
   mediaPart(mediaId: string): Promise<{ part: Part; cleanup(): Promise<void> }>;
   findPhrases(ownerId: string, text: string): Promise<PhraseRef[]>;
   onStage(stage: string): Promise<void>;
-  onModelCall(node: string, ms: number, repaired: boolean): void;
+  onModelCall(node: string, ms: number, repaired: boolean, model: string): void;
 }
 
 export const AssistState = Annotation.Root({
@@ -82,6 +82,15 @@ export type AssistInterrupt =
 export type TranscriptResume = { transcript: string };
 export type ClarifyResume = { answer: string };
 
+const NO_CHECK = {
+  meaning_preserved: true,
+  unsupported_additions: [] as string[],
+  lost_meaning: [] as string[],
+  needs_clarification: false,
+  question: "",
+  choices: [] as string[],
+};
+
 const isMedia = (mode: SourceMode) => mode === "speak" || mode === "video";
 
 function cleanChoices(choices: string[]): string[] {
@@ -93,10 +102,10 @@ function cleanChoices(choices: string[]): string[] {
 }
 
 export function buildAssistGraph(deps: AssistDeps, checkpointer: BaseCheckpointSaver) {
-  async function timed<T>(node: string, fn: () => Promise<{ data: T; repaired: boolean }>): Promise<T> {
+  async function timed<T>(node: string, fn: () => Promise<{ data: T; repaired: boolean; model: string }>): Promise<T> {
     const started = Date.now();
-    const { data, repaired } = await fn();
-    deps.onModelCall(node, Date.now() - started, repaired);
+    const { data, repaired, model } = await fn();
+    deps.onModelCall(node, Date.now() - started, repaired, model);
     return data;
   }
 
@@ -178,13 +187,18 @@ export function buildAssistGraph(deps: AssistDeps, checkpointer: BaseCheckpointS
     await deps.onStage("Checking nothing was changed or added");
     const draft = s.composed?.draft_text ?? "";
     const input = { source: s.transcript, answers: s.answers, draft };
+    // The model's meaning check is a second opinion. If Gemini is overloaded or out of quota, the
+    // deterministic critical-slot check below still runs, so the translation isn't lost.
     const out = await timed("check", () =>
       generateJson(
         deps.creds,
         { system: CHECK_SYSTEM, parts: [{ text: JSON.stringify(input) }], signal: deps.signal },
         checkOutput,
       ),
-    );
+    ).catch((err: unknown) => {
+      if (err instanceof AppError && ["ai_unavailable", "rate_limited", "ai_malformed"].includes(err.code)) return NO_CHECK;
+      throw err;
+    });
     const evidence = [s.transcript, ...s.answers.map((a) => a.answer)].join("\n");
     const slots = diffSlots(evidence, draft.replace(/\[[^\]]*\?\]/g, ""));
     const unique = (xs: string[]) => [...new Set(xs.map((x) => x.trim()).filter(Boolean))];

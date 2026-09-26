@@ -18,7 +18,9 @@ export function getPool(): Pool {
   if (!globals.intunePool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) throw new Error("DATABASE_URL is not set");
-    globals.intunePool = new Pool({ connectionString, max: POOL_MAX });
+    // Explicit verify-full keeps today's strict TLS and silences pg's sslmode deprecation warning.
+    const url = connectionString.replace(/sslmode=(require|prefer|verify-ca)/, "sslmode=verify-full");
+    globals.intunePool = new Pool({ connectionString: url, max: POOL_MAX });
   }
   return globals.intunePool;
 }
