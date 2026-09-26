@@ -14,11 +14,12 @@ Related skills: `ui-demo` (the Discover → Rehearse → Record method this foll
 
 ## Prerequisites
 - ffmpeg with libass and libx264 (`brew install ffmpeg`), plus the Playwright Chromium installed by the repo.
-- **Voice:** `ELEVENLABS_API_KEY`, either in the environment or in `video/.env.local` as `ELEVENLABS_API_KEY=...`. That file is gitignored; never print, log or commit the key.
-  - Without a key, the Mac's built-in voice is used (`MAC_VOICE`, default "Samantha"), so a complete video can always be made.
-  - Force either voice with `NARRATION=elevenlabs|mac`.
-  - Changing the voice changes the timing, so re-record every scene (`npm run video`).
-- Optional: `ELEVENLABS_VOICE_ID` (the default is the premade voice "Sarah") and `ELEVENLABS_MODEL_ID` (default `eleven_multilingual_v2`).
+- **Voice**, best available first (force one with `NARRATION=elevenlabs|kokoro|mac`):
+  1. **ElevenLabs**, when `ELEVENLABS_API_KEY` is set, either in the environment or in the gitignored `video/.env.local`. Never print, log or commit the key.
+  2. **Kokoro**: open-source neural TTS (Apache-2.0), run locally from `video/.venv` with no account. It is natural and gives word timings. Setup: `uv venv video/.venv --python 3.11 && VIRTUAL_ENV=video/.venv uv pip install kokoro soundfile "misaki[en]"`, plus the spaCy model `en_core_web_sm` 3.8 wheel. The voices are `af_heart` (narrator) and `am_michael` (the creator's first-person story; set per scene with `voice: "creator"`). Tune with `KOKORO_VOICE`, `KOKORO_CREATOR_VOICE` and `KOKORO_SPEED` (default 1.1).
+  3. **macOS `say`** (`MAC_VOICE`): always available, but robotic.
+
+  Changing the voice changes the timing, so re-record every scene (`npm run video`).
 - Re-seeding the production demo accounts needs `DATABASE_URL` for production. Pull it into the scratchpad, never into the repo: `vercel env pull <scratch>/prod.env --environment=production`, export it, then delete the file.
 
 ## Commands (from the repo root)
@@ -35,6 +36,7 @@ Related skills: `ui-demo` (the Discover → Rehearse → Record method this foll
 | `npm run video:render` | Builds the final MP4, SRT and VTT |
 | `npm run video:render -- --estimate` | Draft with silent audio and estimated caption timing (no key needed) |
 | `npm run video` | tts → record → render |
+| `npm run screenshots` | README screenshots from the live app into `media/screenshots/` (`-- --only plan` for one) |
 
 **Check the result:**
 - `ffprobe video/out/final/intune-demo.mp4` should show 1920×1080, 30 fps, h264 + aac, 3–5 minutes.

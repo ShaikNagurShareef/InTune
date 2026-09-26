@@ -50,3 +50,4 @@ next-env.d.ts
 # demo video pipeline (narration cache, recordings, renders)
 /video/.cache/
 /video/out/
+/video/.venv/

@@ -7,7 +7,7 @@ import { editScene, type Overlay, type SceneEdit } from "../lib/timeline";
 import { cuesFor, tidy, toAss, toSrt, toVtt, type Cue } from "../lib/subs";
 import { ffmpeg, filterPath, probe } from "../lib/ffmpeg";
 import { BAND_COLOR, FINAL_DIR, FRAME, OUTPUT, TAKES_DIR } from "../lib/paths";
-import { provider, type Spoken } from "../lib/tts";
+import { voiceCredit, type Spoken } from "../lib/tts";
 import { chapters, renderThumbnail, writeUploadNotes } from "../lib/youtube";
 
 /**
@@ -127,7 +127,7 @@ await ffmpeg([
 ]);
 if (!estimate) {
   const chapterLines = chapters(built);
-  writeUploadNotes(path.join(FINAL_DIR, "YOUTUBE.md"), chapterLines, provider() === "elevenlabs" ? "ElevenLabs" : "macOS text-to-speech");
+  writeUploadNotes(path.join(FINAL_DIR, "YOUTUBE.md"), chapterLines, voiceCredit());
   await renderThumbnail(path.join(FINAL_DIR, "intune-thumbnail.jpg"));
   console.log(`YouTube: ${path.join(FINAL_DIR, "YOUTUBE.md")} (title, description, chapters) and intune-thumbnail.jpg`);
 }

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Demo-video pipeline artefacts (Python venv, caches, renders).
+    "video/.venv/**",
+    "video/.cache/**",
+    "video/out/**",
   ]),
 ]);
 

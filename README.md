@@ -6,7 +6,7 @@
 
 InTune is a private communication community for adults who choose communication support, and the people they talk with. You can express a message by typing, tapping phrases, recording up to 30 seconds of audio, or recording a 15-second video. Gemini helps turn it into words and asks one question when something is unclear. Nothing is sent until you approve the exact text and audience. Recipients can open a private "Make clearer" version of any message and reply the same way.
 
-## Demo video (5:48)
+## Demo video (6:06)
 
 [![Watch the InTune demo video](media/intune-thumbnail.jpg)](https://github.com/ShaikNagurShareef/InTune/raw/main/media/intune-demo.mp4)
 
@@ -22,7 +22,33 @@ It covers:
 - how InTune differs from a chat app with an AI assistant;
 - privacy and data protection.
 
-Every AI result in the video is live. It was recorded automatically from the deployed app with `npm run video` (see `video/` and `.claude/skills/intune-demo-video`).
+Every AI result in the video is live. It was recorded automatically from the deployed app with `npm run video` (see `video/` and `.claude/skills/intune-demo-video`). The narration is natural neural speech from [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) (open source, run locally), with a separate voice for the creator's own story.
+
+## Screenshots
+
+All screenshots are from the live app with the fictional demo accounts; the AI output shown is real. Refresh them with `npm run screenshots`.
+
+<table>
+  <tr>
+    <td width="50%"><img src="media/screenshots/chats.jpg" alt="Maya's chats: circles and direct chats, her status, and tone tags on messages"><br><b>Chats:</b> private circles and direct chats, energy status, tone tags such as “no reply needed”</td>
+    <td width="50%"><img src="media/screenshots/translate-in.jpg" alt="A vague message with its private translation: plain words, what they're asking, reply needed, what's unclear"><br><b>Understanding what others mean:</b> plain words, the actual ask, whether to reply, what’s unclear. Only the reader sees it.</td>
+  </tr>
+  <tr>
+    <td><img src="media/screenshots/translate-out.jpg" alt="Leo's shorthand shown as 'You wrote', the clear wording under 'They'll see exactly this', tone tags and Approve and send"><br><b>Being understood:</b> shorthand in clear words; you approve the exact text and audience before anything is sent</td>
+    <td><img src="media/screenshots/plan.jpg" alt="Plan it together card: when, where, what, bringing, so it works for everyone, still to decide"><br><b>Plan it together:</b> a scattered group chat becomes one plan that meets each person’s stated needs</td>
+  </tr>
+  <tr>
+    <td><img src="media/screenshots/profile.jpg" alt="Maya's profile with her How to talk with me card"><br><b>How to talk with me:</b> each person shares what helps, plus their own phrasebook and calm colour themes</td>
+    <td><img src="media/screenshots/call.jpg" alt="A live call: two tiles, a Please slow down signal, and the conversation panel with the AI interpreter's plain-words version"><br><b>Live calls:</b> captions, a private AI interpreter, one-tap signals, and “say it for me”. Nothing is recorded.</td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="media/screenshots/mobile-chats.jpg" width="260" alt="Chats on a phone">
+  &nbsp;&nbsp;
+  <img src="media/screenshots/mobile-translate.jpg" width="260" alt="A translated message on a phone">
+  <br><b>On phones:</b> the same app, with bottom tabs and large touch targets
+</p>
 
 **For judges:** [SUBMISSION.md](SUBMISSION.md) (who it's for, how it strengthens connection, why AI is essential) · [DEMO_VIDEO.md](DEMO_VIDEO.md) (2:45 demo script).
 

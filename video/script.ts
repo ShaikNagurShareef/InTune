@@ -36,6 +36,8 @@ export interface Scene {
   label?: string;
   /** YouTube chapter that starts with this scene (scenes without one continue the previous chapter). */
   chapter?: string;
+  /** Who speaks the narration: the narrator (default), or the creator telling their own story. */
+  voice?: "narrator" | "creator";
   /** Changes demo data (so re-recording is cleaner after a reseed). */
   mutates?: boolean;
   setup?: (ctx: SceneCtx) => Promise<void>;
@@ -101,6 +103,7 @@ export const SCENES: Scene[] = [
   {
     id: "story",
     kind: "card",
+    voice: "creator",
     card: "story",
     beats: [
       { say: "This project started with a friend. I grew up with a close friend who found conversations hard.", run: ({ card }) => card(1) },

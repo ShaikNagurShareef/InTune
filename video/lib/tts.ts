@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -5,14 +6,37 @@ import { TTS_DIR, VIDEO_DIR } from "./paths";
 import { ffmpeg, probeDuration, run } from "./ffmpeg";
 
 /**
- * ElevenLabs narration with character timings (for exact captions). Results are cached by content hash,
- * so re-renders never spend credits twice. The API key comes from the environment (or the gitignored
- * video/.env.local) and is never written or logged by this code.
+ * Narration with word timings (for exact captions), cached by content hash so re-renders never repeat work.
+ *
+ * Providers, best first (force one with NARRATION=elevenlabs|kokoro|mac):
+ *   elevenlabs  natural cloud voices; needs ELEVENLABS_API_KEY (env or gitignored video/.env.local), never logged
+ *   kokoro      open-source neural TTS (Apache-2.0) run locally from video/.venv; natural, no account
+ *   mac         the built-in macOS voice; always available, but robotic
  */
-export const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "EXAVITQu4vr4xnSDxMaL"; // "Sarah", a clear premade voice
+export type Role = "narrator" | "creator";
+export type Provider = "elevenlabs" | "kokoro" | "mac";
+
+const ELEVEN_VOICES: Record<Role, string> = {
+  narrator: process.env.ELEVENLABS_VOICE_ID ?? "EXAVITQu4vr4xnSDxMaL", // "Sarah"
+  creator: process.env.ELEVENLABS_CREATOR_VOICE_ID ?? "nPczCjzI2devNBz1zQrb", // "Brian"
+};
 export const MODEL_ID = process.env.ELEVENLABS_MODEL_ID ?? "eleven_multilingual_v2";
-const VOICE_SETTINGS = { stability: 0.5, similarity_boost: 0.75, style: 0.15, use_speaker_boost: true, speed: 0.95 };
-const API = "https://api.elevenlabs.io/v1";
+const ELEVEN_SETTINGS = { stability: 0.5, similarity_boost: 0.75, style: 0.15, use_speaker_boost: true, speed: 0.95 };
+const ELEVEN_API = "https://api.elevenlabs.io/v1";
+
+/** Kokoro's highest-rated American voices: a warm female narrator, and a male voice for the creator's own story. */
+const KOKORO_VOICES: Record<Role, string> = {
+  narrator: process.env.KOKORO_VOICE ?? "af_heart",
+  creator: process.env.KOKORO_CREATOR_VOICE ?? "am_michael",
+};
+const KOKORO_SPEED = Number(process.env.KOKORO_SPEED ?? 1.1);
+const KOKORO_PYTHON = path.join(VIDEO_DIR, ".venv", "bin", "python");
+const KOKORO_SCRIPT = path.join(VIDEO_DIR, "kokoro_tts.py");
+
+export const MAC_VOICE = process.env.MAC_VOICE ?? "Samantha";
+const MAC_RATE = 172;
+const SAY_TIMEOUT_MS = 30_000;
+
 /** Rough speaking rate used for rehearsals before any audio exists. */
 const CHARS_PER_SECOND = 14;
 export const TAIL_SECONDS = 0.35;
@@ -31,6 +55,14 @@ export interface Spoken {
   words: Word[];
 }
 
+/** One sentence to speak, with its neighbours (for natural flow) and who is speaking. */
+export interface Line {
+  text: string;
+  prev?: string;
+  next?: string;
+  role?: Role;
+}
+
 function apiKey(): string | null {
   if (process.env.ELEVENLABS_API_KEY) return process.env.ELEVENLABS_API_KEY.trim();
   const local = path.join(VIDEO_DIR, ".env.local");
@@ -40,27 +72,41 @@ function apiKey(): string | null {
 }
 
 export const hasApiKey = (): boolean => Boolean(apiKey());
+const hasKokoro = (): boolean => existsSync(KOKORO_PYTHON) && existsSync(KOKORO_SCRIPT);
 
-/**
- * Narration source: ElevenLabs when a key is available, otherwise the Mac's built-in voice so a complete
- * video can always be made. Force one with NARRATION=elevenlabs|mac.
- */
-export const MAC_VOICE = process.env.MAC_VOICE ?? "Samantha";
-const MAC_RATE = 172;
-const SAY_TIMEOUT_MS = 30_000;
-export type Provider = "elevenlabs" | "mac";
 export function provider(): Provider {
   const forced = process.env.NARRATION;
-  if (forced === "mac" || forced === "elevenlabs") return forced;
-  return hasApiKey() ? "elevenlabs" : "mac";
+  if (forced === "mac" || forced === "elevenlabs" || forced === "kokoro") return forced;
+  if (hasApiKey()) return "elevenlabs";
+  return hasKokoro() ? "kokoro" : "mac";
 }
-export const providerLabel = (): string => (provider() === "elevenlabs" ? `ElevenLabs (${VOICE_ID}, ${MODEL_ID})` : `macOS voice "${MAC_VOICE}"`);
 
-const cacheKey = (text: string, prev: string, next: string) =>
-  createHash("sha256")
-    .update(JSON.stringify(provider() === "elevenlabs" ? { text, prev, next, VOICE_ID, MODEL_ID, VOICE_SETTINGS } : { text, MAC_VOICE, MAC_RATE }))
-    .digest("hex")
-    .slice(0, 24);
+export function providerLabel(): string {
+  const p = provider();
+  if (p === "elevenlabs") return `ElevenLabs (${ELEVEN_VOICES.narrator} / ${ELEVEN_VOICES.creator}, ${MODEL_ID})`;
+  if (p === "kokoro") return `Kokoro neural TTS (${KOKORO_VOICES.narrator} / ${KOKORO_VOICES.creator}), local`;
+  return `macOS voice "${MAC_VOICE}"`;
+}
+
+/** Credit line for the outro. */
+export function voiceCredit(): string {
+  const p = provider();
+  return p === "elevenlabs" ? "ElevenLabs" : p === "kokoro" ? "Kokoro (open-source neural TTS)" : "macOS text-to-speech";
+}
+
+function cacheKey(line: Line): string {
+  const role = line.role ?? "narrator";
+  const p = provider();
+  const identity =
+    p === "elevenlabs"
+      ? { p, text: line.text, prev: line.prev ?? "", next: line.next ?? "", voice: ELEVEN_VOICES[role], MODEL_ID, ELEVEN_SETTINGS }
+      : p === "kokoro"
+        ? { p, text: line.text, voice: KOKORO_VOICES[role], speed: KOKORO_SPEED }
+        : { text: line.text, MAC_VOICE, MAC_RATE };
+  return createHash("sha256").update(JSON.stringify(identity)).digest("hex").slice(0, 24);
+}
+
+const basePath = (line: Line) => path.join(TTS_DIR, cacheKey(line));
 
 interface Alignment {
   characters: string[];
@@ -85,6 +131,25 @@ function toWords(a: Alignment): Word[] {
   return words;
 }
 
+/** Punctuation tokens join their neighbours ("sister" + ":" → "sister:", "“" + "It’d" → "“It’d"). */
+function mergePunctuation(tokens: Word[]): Word[] {
+  const out: Word[] = [];
+  let opener = "";
+  for (const t of tokens) {
+    if (/^[“"‘(\[]+$/.test(t.text)) {
+      opener += t.text;
+      continue;
+    }
+    if (/^[^\p{L}\p{N}]+$/u.test(t.text) && out.length) {
+      out[out.length - 1] = { ...out[out.length - 1], text: out[out.length - 1].text + t.text, end: Math.max(out[out.length - 1].end, t.end) };
+      continue;
+    }
+    out.push({ ...t, text: opener + t.text });
+    opener = "";
+  }
+  return out;
+}
+
 /** Words spread across a known (or estimated) duration, in proportion to their length. */
 function spreadWords(text: string, duration: number): Word[] {
   const parts = text.split(/\s+/).filter(Boolean);
@@ -104,14 +169,29 @@ function estimate(text: string): Spoken {
   return { text, file: null, duration: duration + TAIL_SECONDS, words: spreadWords(text, duration) };
 }
 
-/** The Mac's built-in voice (no account needed). Word timings are spread by length. */
-async function synthesizeMac(text: string, base: string): Promise<Spoken> {
+export function cachedSpeech(line: Line): Spoken | null {
+  const base = basePath(line);
+  if (!existsSync(`${base}.mp3`) || !existsSync(`${base}.json`)) return null;
+  const meta = JSON.parse(readFileSync(`${base}.json`, "utf8")) as { duration: number; words: Word[] };
+  return { text: line.text, file: `${base}.mp3`, duration: meta.duration + TAIL_SECONDS, words: meta.words };
+}
+
+/** Narration for one sentence: cached audio, or an estimate when `allowEstimate` (rehearsals). */
+export function speechFor(line: Line, allowEstimate = false): Spoken {
+  const cached = cachedSpeech(line);
+  if (cached) return cached;
+  if (allowEstimate) return estimate(line.text);
+  throw new Error(`No narration audio yet for: "${line.text.slice(0, 50)}…". Run \`npm run video:tts\` first.`);
+}
+
+async function synthesizeMac(line: Line): Promise<Spoken> {
+  const base = basePath(line);
   const aiff = `${base}.aiff`;
   // `say` occasionally writes its file and then never exits; time it out and retry.
   for (let attempt = 1; ; attempt++) {
     rmSync(aiff, { force: true });
     try {
-      await run("say", ["-v", MAC_VOICE, "-r", String(MAC_RATE), "-o", aiff, text], SAY_TIMEOUT_MS);
+      await run("say", ["-v", MAC_VOICE, "-r", String(MAC_RATE), "-o", aiff, line.text], SAY_TIMEOUT_MS);
       break;
     } catch (err) {
       if (attempt >= 3) throw err;
@@ -121,52 +201,72 @@ async function synthesizeMac(text: string, base: string): Promise<Spoken> {
   await ffmpeg(["-i", aiff, "-af", "silenceremove=stop_periods=-1:stop_duration=0.4:stop_threshold=-50dB", "-codec:a", "libmp3lame", "-q:a", "2", `${base}.mp3`]);
   rmSync(aiff, { force: true });
   const duration = await probeDuration(`${base}.mp3`);
-  const words = spreadWords(text, duration);
-  writeFileSync(`${base}.json`, JSON.stringify({ text, duration, words }, null, 1));
-  return { text, file: `${base}.mp3`, duration: duration + TAIL_SECONDS, words };
+  const words = spreadWords(line.text, duration);
+  writeFileSync(`${base}.json`, JSON.stringify({ text: line.text, duration, words }, null, 1));
+  return { text: line.text, file: `${base}.mp3`, duration: duration + TAIL_SECONDS, words };
 }
 
-export function cachedSpeech(text: string, prev = "", next = ""): Spoken | null {
-  const base = path.join(TTS_DIR, cacheKey(text, prev, next));
-  if (!existsSync(`${base}.mp3`) || !existsSync(`${base}.json`)) return null;
-  const meta = JSON.parse(readFileSync(`${base}.json`, "utf8")) as { duration: number; words: Word[] };
-  return { text, file: `${base}.mp3`, duration: meta.duration + TAIL_SECONDS, words: meta.words };
-}
-
-/** Narration for one sentence: cached audio, or an estimate when `allowEstimate` (rehearsals). */
-export function speechFor(text: string, prev = "", next = "", allowEstimate = false): Spoken {
-  const cached = cachedSpeech(text, prev, next);
-  if (cached) return cached;
-  if (allowEstimate) return estimate(text);
-  throw new Error(`No narration audio yet for: "${text.slice(0, 50)}…". Run \`npm run video:tts\` first.`);
-}
-
-export async function synthesize(text: string, prev = "", next = ""): Promise<Spoken> {
-  const cached = cachedSpeech(text, prev, next);
-  if (cached) return cached;
-  mkdirSync(TTS_DIR, { recursive: true });
-  if (provider() === "mac") return synthesizeMac(text, path.join(TTS_DIR, cacheKey(text, prev, next)));
+async function synthesizeEleven(line: Line): Promise<Spoken> {
   const key = apiKey();
   if (!key) throw new Error("ELEVENLABS_API_KEY is not set (export it, or put it in video/.env.local).");
-  mkdirSync(TTS_DIR, { recursive: true });
-  const res = await fetch(`${API}/text-to-speech/${VOICE_ID}/with-timestamps?output_format=mp3_44100_128`, {
+  const voice = ELEVEN_VOICES[line.role ?? "narrator"];
+  const res = await fetch(`${ELEVEN_API}/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {
     method: "POST",
     headers: { "xi-api-key": key, "content-type": "application/json" },
-    body: JSON.stringify({ text, model_id: MODEL_ID, voice_settings: VOICE_SETTINGS, previous_text: prev || undefined, next_text: next || undefined }),
+    body: JSON.stringify({ text: line.text, model_id: MODEL_ID, voice_settings: ELEVEN_SETTINGS, previous_text: line.prev || undefined, next_text: line.next || undefined }),
   });
   if (!res.ok) throw new Error(`ElevenLabs ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const body = (await res.json()) as { audio_base64: string; alignment: Alignment };
-  const base = path.join(TTS_DIR, cacheKey(text, prev, next));
+  const base = basePath(line);
   writeFileSync(`${base}.mp3`, Buffer.from(body.audio_base64, "base64"));
   const duration = await probeDuration(`${base}.mp3`);
-  writeFileSync(`${base}.json`, JSON.stringify({ text, duration, words: toWords(body.alignment) }, null, 1));
-  return { text, file: `${base}.mp3`, duration: duration + TAIL_SECONDS, words: toWords(body.alignment) };
+  const words = toWords(body.alignment);
+  writeFileSync(`${base}.json`, JSON.stringify({ text: line.text, duration, words }, null, 1));
+  return { text: line.text, file: `${base}.mp3`, duration: duration + TAIL_SECONDS, words };
+}
+
+/** Runs Kokoro once for many lines (the model loads once), then stores MP3 + word timings per line. */
+async function synthesizeKokoro(lines: Line[]): Promise<void> {
+  const jobs = lines.map((line) => ({
+    text: line.text,
+    voice: KOKORO_VOICES[line.role ?? "narrator"],
+    speed: KOKORO_SPEED,
+    wav: `${basePath(line)}.wav`,
+    json: `${basePath(line)}.kokoro.json`,
+  }));
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(KOKORO_PYTHON, [KOKORO_SCRIPT], { stdio: ["pipe", "inherit", "pipe"] });
+    let err = "";
+    child.stderr.on("data", (d: Buffer) => (err += d.toString()));
+    child.on("error", reject);
+    child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`Kokoro exited ${code}: ${err.slice(-1500)}`))));
+    child.stdin.end(JSON.stringify(jobs));
+  });
+  for (const [i, line] of lines.entries()) {
+    const base = basePath(line);
+    await ffmpeg(["-i", jobs[i].wav, "-codec:a", "libmp3lame", "-q:a", "2", `${base}.mp3`]);
+    const raw = JSON.parse(readFileSync(jobs[i].json, "utf8")) as { words: Word[] };
+    const duration = await probeDuration(`${base}.mp3`);
+    writeFileSync(`${base}.json`, JSON.stringify({ text: line.text, duration, words: mergePunctuation(raw.words) }, null, 1));
+    rmSync(jobs[i].wav, { force: true });
+    rmSync(jobs[i].json, { force: true });
+  }
+}
+
+/** Makes narration for every line that isn't cached yet, using the current provider. */
+export async function synthesizeAll(lines: Line[]): Promise<void> {
+  mkdirSync(TTS_DIR, { recursive: true });
+  const missing = lines.filter((l) => !cachedSpeech(l));
+  if (!missing.length) return;
+  const p = provider();
+  if (p === "kokoro") return synthesizeKokoro(missing);
+  for (const line of missing) await (p === "elevenlabs" ? synthesizeEleven(line) : synthesizeMac(line));
 }
 
 export async function listVoices(): Promise<{ voice_id: string; name: string; labels: Record<string, string> }[]> {
   const key = apiKey();
   if (!key) throw new Error("ELEVENLABS_API_KEY is not set.");
-  const res = await fetch(`${API}/voices`, { headers: { "xi-api-key": key } });
+  const res = await fetch(`${ELEVEN_API}/voices`, { headers: { "xi-api-key": key } });
   if (!res.ok) throw new Error(`ElevenLabs ${res.status}`);
   return ((await res.json()) as { voices: { voice_id: string; name: string; labels: Record<string, string> }[] }).voices;
 }

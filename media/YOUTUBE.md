@@ -24,21 +24,21 @@ Built by Coding Claws for HackGT 13 · Meta challenge: Bringing People Closer To
 Team: Nagur Shareef Shaik, Sahith Reddy Thummala, Pranav Nagothu, Geethanjali Nagaboina.
 Demo people are fictional. Every AI result in this video is live; long AI waits are shortened and labelled. In the call, Leo's speech is simulated for the recording (labelled on screen); the interpretation is live AI.
 Research: Crompton et al., Autism (2020); Grace et al., Autism (2022); Milton (2012).
-Narration voice: macOS text-to-speech.
+Narration voice: Kokoro (open-source neural TTS).
 
 Chapters
 0:00 Why InTune
-1:09 Maya’s chats: status and tone tags
-1:27 Understanding what others mean
-1:50 Being understood, with approval
-2:18 Personal phrases
-2:45 How to talk with me
-3:02 Joining a circle safely
-3:15 Plan it together
-3:52 Live calls with an AI interpreter
-4:29 How InTune is different
-4:57 Trust by design
-5:12 Privacy and data protection
+1:14 Maya’s chats: status and tone tags
+1:33 Understanding what others mean
+1:57 Being understood, with approval
+2:26 Personal phrases
+2:56 How to talk with me
+3:12 Joining a circle safely
+3:26 Plan it together
+4:05 Live calls with an AI interpreter
+4:43 How InTune is different
+5:12 Trust by design
+5:27 Privacy and data protection
 
 ## Tags
 InTune, autism, accessibility, AI, communication, HackGT, Meta, assistive technology, neurodiversity

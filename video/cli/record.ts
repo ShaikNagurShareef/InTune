@@ -6,7 +6,7 @@ import { SCENES, sceneById, type Scene, type SceneCtx } from "../script";
 import { Director, signedInPage } from "../lib/actions";
 import { CURSOR_SCRIPT, Recorder } from "../lib/capture";
 import { narrationFor } from "../lib/narration";
-import { provider } from "../lib/tts";
+import { voiceCredit } from "../lib/tts";
 import { CARDS_DIR, DEVICE_SCALE, TAKES_DIR, VIEWPORT } from "../lib/paths";
 
 /**
@@ -43,7 +43,7 @@ async function cardPage(browser: Browser, card: string): Promise<Page> {
   await page.evaluate((credit) => {
     const el = document.getElementById("voice-credit");
     if (el) el.textContent = credit;
-  }, provider() === "elevenlabs" ? "ElevenLabs" : "macOS text-to-speech");
+  }, voiceCredit());
   await page.waitForTimeout(400);
   return page;
 }

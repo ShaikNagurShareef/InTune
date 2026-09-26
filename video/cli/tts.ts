@@ -1,12 +1,13 @@
 import { SCENES } from "../script";
-import { cachedSpeech, listVoices, provider, providerLabel } from "../lib/tts";
-import { synthesizeScene } from "../lib/narration";
+import { cachedSpeech, listVoices, providerLabel } from "../lib/tts";
+import { linesFor, narrationFor, synthesizeScenes } from "../lib/narration";
 
 /**
- * Makes the narration audio (ElevenLabs), reusing cached lines.
- *   npm run video:tts            synthesize anything missing
- *   npm run video:tts -- --dry   show how many characters would be spent
- *   npm run video:tts -- --voices  list voices available to your key
+ * Makes the narration audio, reusing cached lines.
+ *   npm run video:tts               synthesize anything missing
+ *   npm run video:tts -- --dry      show what would be synthesized
+ *   npm run video:tts -- --voices   list ElevenLabs voices available to your key
+ * Voice: ElevenLabs if a key is set, else Kokoro (local neural TTS), else the Mac voice. Force with NARRATION=…
  */
 const args = process.argv.slice(2);
 
@@ -15,23 +16,18 @@ if (args.includes("--voices")) {
   process.exit(0);
 }
 
-let total = 0;
-let missing = 0;
-for (const scene of SCENES) {
-  scene.beats.forEach((b, i) => {
-    total += b.say.length;
-    if (!cachedSpeech(b.say, scene.beats[i - 1]?.say ?? "", scene.beats[i + 1]?.say ?? "")) missing += b.say.length;
-  });
-}
-console.log(`Narration: ${total} characters, ${missing} not yet synthesized · voice: ${providerLabel()}.`);
-if (provider() === "mac") console.log("  (No ElevenLabs key found: using the Mac voice. Add ELEVENLABS_API_KEY to video/.env.local for the ElevenLabs voice.)");
+const lines = SCENES.flatMap(linesFor);
+const total = lines.reduce((n, l) => n + l.text.length, 0);
+const missing = lines.filter((l) => !cachedSpeech(l));
+console.log(`Narration: ${lines.length} lines, ${total} characters, ${missing.length} not yet made · voice: ${providerLabel()}`);
 if (args.includes("--dry")) process.exit(0);
 
+await synthesizeScenes(SCENES);
 let seconds = 0;
 for (const scene of SCENES) {
-  const lines = await synthesizeScene(scene);
-  const d = lines.reduce((n, l) => n + l.duration, 0);
+  const spoken = narrationFor(scene, false);
+  const d = spoken.reduce((n, s) => n + s.duration, 0);
   seconds += d;
-  console.log(`  ${scene.id.padEnd(14)} ${lines.length} lines · ${d.toFixed(1)} s`);
+  console.log(`  ${scene.id.padEnd(14)} ${spoken.length} lines · ${d.toFixed(1)} s${scene.voice === "creator" ? " (creator voice)" : ""}`);
 }
-console.log(`Total narration ≈ ${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`);
+console.log(`Total narration ≈ ${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`);
