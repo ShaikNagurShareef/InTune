@@ -84,13 +84,24 @@ export async function previewInvite(token: string, user: { id: string; email: st
   };
 }
 
+type InviteLocator = { token: string } | { id: string };
+
+const locate = (by: InviteLocator) =>
+  "token" in by ? eq(invitations.tokenHash, sha256(by.token)) : eq(invitations.id, by.id);
+
 export async function acceptInvite(token: string, user: { id: string; email: string }): Promise<{ circleId: string }> {
+  return accept({ token }, user);
+}
+
+/** In-app acceptance: the invitation must be addressed to this account's email. */
+export async function acceptInvitation(id: string, user: { id: string; email: string }): Promise<{ circleId: string }> {
+  return accept({ id }, user);
+}
+
+async function accept(by: InviteLocator, user: { id: string; email: string }): Promise<{ circleId: string }> {
   return db().transaction(async (tx) => {
-    const [invite] = await tx
-      .select()
-      .from(invitations)
-      .where(eq(invitations.tokenHash, sha256(token)))
-      .for("update");
+    const [invite] = await tx.select().from(invitations).where(locate(by)).for("update");
+    if ("id" in by && invite?.targetEmail !== user.email) throw new AppError("not_found", INVALID_INVITE);
     if (!isUsable(invite, user.email)) throw new AppError("not_found", INVALID_INVITE);
     if ((await activeMemberCount(invite.circleId, tx)) >= MEMBER_CAP) {
       throw new AppError("conflict", "This circle is full.");
@@ -111,9 +122,125 @@ export async function acceptInvite(token: string, user: { id: string; email: str
 }
 
 export async function declineInvite(token: string, user: { id: string; email: string }): Promise<void> {
-  const invite = await findByToken(token);
+  await decline({ token }, user);
+}
+
+export async function declineInvitation(id: string, user: { id: string; email: string }): Promise<void> {
+  await decline({ id }, user);
+}
+
+/** Declining needs no reason and tells the inviter nothing beyond the invitation no longer being pending (J1). */
+async function decline(by: InviteLocator, user: { id: string; email: string }): Promise<void> {
+  const [invite] = await db().select().from(invitations).where(locate(by));
   if (!isUsable(invite, user.email)) return;
+  if ("id" in by && invite.targetEmail !== user.email) return;
   await db().update(invitations).set({ declinedAt: new Date() }).where(eq(invitations.id, invite.id));
+}
+
+/**
+ * In-app invitation by exact email (no search, no directory). The owner always gets the same answer,
+ * so this can't be used to learn whether an email is registered, blocked, or already a member.
+ */
+export async function inviteByEmail(ownerId: string, circleId: string, targetEmail: string): Promise<void> {
+  await requireOwner(ownerId, circleId);
+  if ((await activeMemberCount(circleId)) >= MEMBER_CAP) {
+    throw new AppError("conflict", `Circles can have up to ${MEMBER_CAP} members.`);
+  }
+  const [target] = await db()
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.email, targetEmail), isNull(users.deletedAt)));
+  if (target) {
+    if (target.id === ownerId || (await findActiveMembership(target.id, circleId))) return;
+    if (await isBlockedEitherWay(ownerId, target.id)) return;
+  }
+  const now = new Date();
+  // One pending invitation per person per circle: a new one replaces the old.
+  await db()
+    .update(invitations)
+    .set({ revokedAt: now })
+    .where(
+      and(
+        eq(invitations.circleId, circleId),
+        eq(invitations.targetEmail, targetEmail),
+        isNull(invitations.usedAt),
+        isNull(invitations.revokedAt),
+        isNull(invitations.declinedAt),
+      ),
+    );
+  await db()
+    .insert(invitations)
+    .values({
+      circleId,
+      inviterId: ownerId,
+      tokenHash: sha256(randomToken()),
+      targetEmail,
+      expiresAt: new Date(now.getTime() + INVITE_TTL_MS),
+    });
+}
+
+export interface MyInvitation {
+  id: string;
+  circleId: string;
+  circleName: string;
+  inviterName: string;
+  members: string[];
+  expiresAt: string;
+}
+
+/** Invitations addressed to this account, shown in the app with Join / Decline. */
+export async function listMyInvitations(user: { id: string; email: string }): Promise<MyInvitation[]> {
+  const rows = await db()
+    .select({
+      id: invitations.id,
+      circleId: invitations.circleId,
+      inviterId: invitations.inviterId,
+      expiresAt: invitations.expiresAt,
+      circleName: circles.name,
+      inviterName: users.displayName,
+    })
+    .from(invitations)
+    .innerJoin(circles, and(eq(circles.id, invitations.circleId), isNull(circles.deletedAt)))
+    .innerJoin(users, eq(users.id, invitations.inviterId))
+    .where(
+      and(
+        eq(invitations.targetEmail, user.email),
+        isNull(invitations.usedAt),
+        isNull(invitations.revokedAt),
+        isNull(invitations.declinedAt),
+        gt(invitations.expiresAt, new Date()),
+      ),
+    )
+    .orderBy(desc(invitations.createdAt));
+  const result: MyInvitation[] = [];
+  for (const r of rows) {
+    if (await findActiveMembership(user.id, r.circleId)) continue;
+    if (await isBlockedEitherWay(user.id, r.inviterId)) continue;
+    const members = await activeMembers(r.circleId);
+    result.push({
+      id: r.id,
+      circleId: r.circleId,
+      circleName: r.circleName,
+      inviterName: r.inviterName,
+      members: members.map((m) => m.displayName),
+      expiresAt: r.expiresAt.toISOString(),
+    });
+  }
+  return result;
+}
+
+async function isBlockedEitherWay(a: string, b: string): Promise<boolean> {
+  const rows = await db()
+    .select({ x: blocks.blockerId })
+    .from(blocks)
+    .where(
+      or(
+        and(eq(blocks.blockerId, a), eq(blocks.blockedId, b)),
+        and(eq(blocks.blockerId, b), eq(blocks.blockedId, a)),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
 }
 
 export async function revokeInvite(ownerId: string, circleId: string, inviteId: string): Promise<void> {

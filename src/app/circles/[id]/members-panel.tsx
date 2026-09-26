@@ -44,15 +44,28 @@ export function MembersPanel({ circle, me }: { circle: CircleInfo; me: Me }) {
 
   const handleInvite = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const email = String(new FormData(event.currentTarget).get("email") ?? "").trim();
+    const form = event.currentTarget;
+    const email = String(new FormData(form).get("email") ?? "").trim();
     try {
-      const res = await api<{ url: string }>(`/api/v1/circles/${circle.id}/invites`, {
-        body: { target_email: email || null },
+      await api(`/api/v1/circles/${circle.id}/invites`, { body: { target_email: email } });
+      form.reset();
+      setMessage({
+        tone: "ok",
+        text: `Invitation sent. If ${email} has an InTune account, it appears in their Chats right away; if they sign up with that email within 24 hours, they'll see it then.`,
       });
+      await mutate();
+    } catch (err) {
+      setMessage({ tone: "warn", text: err instanceof ApiError ? err.message : "Could not send the invitation." });
+    }
+  };
+
+  const createShareLink = async () => {
+    try {
+      const res = await api<{ url: string }>(`/api/v1/circles/${circle.id}/invites`, { body: { share_link: true } });
       setLink(res.url);
       await mutate();
     } catch (err) {
-      setMessage({ tone: "warn", text: err instanceof ApiError ? err.message : "Could not create the invitation." });
+      setMessage({ tone: "warn", text: err instanceof ApiError ? err.message : "Could not create the link." });
     }
   };
 
@@ -112,20 +125,26 @@ export function MembersPanel({ circle, me }: { circle: CircleInfo; me: Me }) {
       {isOwner && (
         <section className="rounded-2xl border border-line bg-card p-5">
           <h2 className="font-display text-xl font-semibold">Invite someone</h2>
+          <p className="mt-1 text-sm text-ink-2">They’ll see it inside InTune and choose to join. There’s no search: use the email they signed up with.</p>
           <form onSubmit={handleInvite} className="mt-3 space-y-3">
             <label className="block">
-              <span className="mb-1 block text-sm font-bold">Their email (recommended)</span>
-              <input name="email" type="email" className={inputClass} placeholder="Only this person can use the link" />
+              <span className="mb-1 block text-sm font-bold">Their email</span>
+              <input name="email" type="email" required autoComplete="off" className={inputClass} placeholder="name@example.com" />
             </label>
-            <Button tone="primary" type="submit" className="w-full">Create invitation link</Button>
+            <Button tone="primary" type="submit" className="w-full">Send invitation</Button>
           </form>
-          {link && (
-            <div className="mt-3 space-y-2">
-              <label className="block text-sm font-bold" htmlFor="invite-link">Private link — send it yourself</label>
-              <input id="invite-link" readOnly value={link} className={`${inputClass} text-sm`} onFocus={(e) => e.currentTarget.select()} />
-              <Button onClick={copy} className="w-full">Copy link</Button>
-            </div>
-          )}
+          <details className="mt-3 text-sm">
+            <summary className="min-h-11 cursor-pointer py-2 font-bold text-ink-2">Not on InTune yet? Use a one-time link</summary>
+            {link ? (
+              <div className="space-y-2">
+                <label className="block font-bold" htmlFor="invite-link">One-time link (works once, 24 hours)</label>
+                <input id="invite-link" readOnly value={link} className={`${inputClass} text-sm`} onFocus={(e) => e.currentTarget.select()} />
+                <Button onClick={copy} className="w-full">Copy link</Button>
+              </div>
+            ) : (
+              <Button onClick={createShareLink} className="w-full">Create a one-time link</Button>
+            )}
+          </details>
           {invites && invites.invites.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-bold">Waiting for a reply</h3>

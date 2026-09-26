@@ -28,19 +28,20 @@ test("G1: compose → clarify → approve → receive → simplify → reply", a
   const ana = await signUp(browser, "Ana");
   const ben = await signUp(browser, "Ben");
 
-  // Ana creates a circle and invites Ben by email.
+  // Ana creates a circle and invites Ben by email — entirely inside the app.
   await ana.page.getByLabel("Circle name").fill("Dinner plans");
   await ana.page.getByRole("button", { name: "Create circle" }).click();
   await expect(ana.page.getByRole("heading", { name: "Dinner plans" })).toBeVisible();
-  await ana.page.getByLabel("Their email (recommended)").fill(ben.email);
-  await ana.page.getByRole("button", { name: "Create invitation link" }).click();
-  const link = await ana.page.getByLabel("Private link — send it yourself").inputValue();
+  await ana.page.getByLabel("Their email").fill(ben.email);
+  await ana.page.getByRole("button", { name: "Send invitation" }).click();
+  await expect(ana.page.getByText("Invitation sent.")).toBeVisible();
 
-  // Ben sees who is in the circle before joining.
-  await ben.page.goto(link);
-  await expect(ben.page.getByRole("heading", { name: "Dinner plans" })).toBeVisible();
-  await expect(ben.page.getByRole("listitem").filter({ hasText: "Ana" })).toBeVisible();
-  await ben.page.getByRole("button", { name: "Join circle" }).click();
+  // Ben sees the invitation in Chats, including who is in the circle, and joins.
+  await ben.page.goto("/circles");
+  const invite = ben.page.getByRole("listitem").filter({ hasText: "Ana invited you to Dinner plans" });
+  await expect(invite).toBeVisible();
+  await expect(invite.getByText("Who will read your posts: Ana")).toBeVisible();
+  await invite.getByRole("button", { name: "Join circle" }).click();
   await ben.page.waitForURL(/\/circles\/[0-9a-f-]+$/);
   const circleUrl = ben.page.url();
 
@@ -98,10 +99,9 @@ test("direct chat: start from New chat, unread in the list, reply", async ({ bro
   const max = await signUp(browser, "Max");
   await zoe.page.getByLabel("Circle name").fill("Book club");
   await zoe.page.getByRole("button", { name: "Create circle" }).click();
-  await zoe.page.getByLabel("Their email (recommended)").fill(max.email);
-  await zoe.page.getByRole("button", { name: "Create invitation link" }).click();
-  const link = await zoe.page.getByLabel("Private link — send it yourself").inputValue();
-  await max.page.goto(link);
+  await zoe.page.getByLabel("Their email").fill(max.email);
+  await zoe.page.getByRole("button", { name: "Send invitation" }).click();
+  await max.page.goto("/circles");
   await max.page.getByRole("button", { name: "Join circle" }).click();
   await max.page.waitForURL(/\/circles\/[0-9a-f-]+$/);
 

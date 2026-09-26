@@ -10,6 +10,7 @@ import { shortTime } from "@/lib/client/time";
 import { Avatar } from "@/components/avatar";
 import { Button, Notice, inputClass } from "@/components/ui";
 import { NewChat } from "./new-chat";
+import { Invitations, type MyInvitation } from "./invitations";
 
 interface ChatSummary {
   id: string;
@@ -73,10 +74,10 @@ function ChatRow({ chat, quiet }: { chat: ChatSummary; quiet: boolean }) {
   );
 }
 
-export function CirclesHome({ initial, quiet, pendingInvites, name }: {
+export function CirclesHome({ initial, quiet, invitations, name }: {
   initial: ChatSummary[];
   quiet: boolean;
-  pendingInvites: number;
+  invitations: MyInvitation[];
   name: string;
 }) {
   const router = useRouter();
@@ -116,13 +117,7 @@ export function CirclesHome({ initial, quiet, pendingInvites, name }: {
           </Button>
         </div>
         {isPicking && <div className="mb-4"><NewChat onClose={() => setIsPicking(false)} /></div>}
-        {pendingInvites > 0 && (
-          <div className="mb-4">
-            <Notice tone="info" title={`You have ${pendingInvites} invitation${pendingInvites === 1 ? "" : "s"} waiting`}>
-              Open the invitation link you were sent to see who is in the circle before you decide.
-            </Notice>
-          </div>
-        )}
+        <Invitations initial={invitations} />
 
         <div role="group" aria-label="Show" className="mb-3 flex gap-1 rounded-xl bg-paper-2 p-1">
           {FILTERS.map((f) => (

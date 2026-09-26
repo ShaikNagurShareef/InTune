@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getServerUser } from "@/lib/auth/server-session";
 import { getPreferences } from "@/lib/services/accounts";
+import { listMyInvitations } from "@/lib/services/invites";
 import { PrefsApplier } from "./prefs-applier";
 import { SignOutButton } from "./sign-out-button";
 import { KeyStatus } from "./key-status";
@@ -14,6 +15,7 @@ const NAV = [
 export async function AppHeader() {
   const user = await getServerUser();
   const prefs = user ? await getPreferences(user.id) : null;
+  const invitationCount = user ? (await listMyInvitations(user)).length : 0;
   return (
     <header id="app-header" className="border-b border-line bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75">
       {prefs && <PrefsApplier textSize={prefs.textSize} reduceMotion={prefs.reduceMotion} />}
@@ -34,6 +36,12 @@ export async function AppHeader() {
                   className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 font-bold text-ink-2 hover:bg-paper-2 hover:text-ink"
                 >
                   {item.label}
+                  {item.href === "/circles" && invitationCount > 0 && (
+                    <span className="ml-1.5 rounded-full bg-teal px-2 text-xs text-teal-ink">
+                      {invitationCount}
+                      <span className="sr-only"> invitation{invitationCount === 1 ? "" : "s"}</span>
+                    </span>
+                  )}
                 </Link>
               ))}
             </nav>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requirePageUser } from "@/lib/auth/server-session";
 import { getPreferences } from "@/lib/services/accounts";
-import { countInvitesForEmail } from "@/lib/services/invites";
+import { listMyInvitations } from "@/lib/services/invites";
 import { listCircles } from "@/lib/services/circles";
 import { CirclesHome } from "./circles-home";
 
@@ -12,7 +12,7 @@ export default async function CirclesPage() {
   const [prefs, circles, invites] = await Promise.all([
     getPreferences(user.id),
     listCircles(user.id),
-    countInvitesForEmail(user.email),
+    listMyInvitations(user),
   ]);
-  return <CirclesHome initial={circles} quiet={prefs.quietMode} pendingInvites={invites} name={user.displayName} />;
+  return <CirclesHome initial={circles} quiet={prefs.quietMode} invitations={invites} name={user.displayName} />;
 }
