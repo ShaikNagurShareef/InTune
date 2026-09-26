@@ -37,6 +37,9 @@ export const preferences = pgTable("preferences", {
   reduceMotion: boolean("reduce_motion").notNull().default(false),
   quietMode: boolean("quiet_mode").notNull().default(false),
   locale: text("locale").notNull().default("en"),
+  // Shown to people who share a circle: a self-chosen energy status and a "how to talk with me" card.
+  status: text("status").notNull().default("none"),
+  commCard: jsonb("comm_card"),
   version: integer("version").notNull().default(1),
   updatedAt: updatedAt(),
 });
@@ -126,6 +129,7 @@ export const drafts = pgTable(
     text: text("text").notNull().default(""),
     aiAssisted: boolean("ai_assisted").notNull().default(false),
     assist: jsonb("assist"),
+    toneTags: text("tone_tags").array().notNull().default([]),
     mediaId: uuid("media_id"),
     status: text("status").notNull().default("DRAFT"),
     createdAt: createdAt(),
@@ -186,6 +190,8 @@ export const messages = pgTable(
     text: text("text").notNull(),
     version: integer("version").notNull().default(1),
     aiAssisted: boolean("ai_assisted").notNull().default(false),
+    // Chosen by the sender only, never by a model.
+    toneTags: text("tone_tags").array().notNull().default([]),
     approvalId: uuid("approval_id"),
     idempotencyKey: text("idempotency_key").notNull(),
     payloadHash: text("payload_hash").notNull(),
@@ -224,6 +230,7 @@ export const readingAids = pgTable(
     messageVersion: integer("message_version").notNull(),
     simplifiedText: text("simplified_text").notNull(),
     warnings: jsonb("warnings"),
+    summary: jsonb("summary"),
     modelId: text("model_id").notNull(),
     createdAt: createdAt(),
   },

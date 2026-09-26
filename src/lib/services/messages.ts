@@ -15,6 +15,7 @@ export interface FeedMessage {
   version: number;
   aiAssisted: boolean;
   approvedBySender: boolean;
+  toneTags: string[];
   createdAt: string;
   edited: boolean;
   deleted: boolean;
@@ -93,6 +94,7 @@ function toFeedMessage(m: typeof messages.$inferSelect, senderName: string, view
     version: m.version,
     aiAssisted: m.aiAssisted,
     approvedBySender: m.approvalId !== null,
+    toneTags: deleted ? [] : m.toneTags,
     createdAt: m.createdAt.toISOString(),
     edited: m.editedAt !== null,
     deleted,

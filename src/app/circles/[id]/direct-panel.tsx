@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui";
+import { CommCardView } from "@/components/comm-card";
 import type { CircleInfo, Me } from "./types";
 
 /** Side panel for one-to-one chats: who it is, privacy, and block. No invites or ownership here. */
@@ -24,6 +25,7 @@ export function DirectPanel({ circle, me }: { circle: CircleInfo; me: Me }) {
           <p className="text-sm text-ink-2">Direct chat</p>
         </div>
       </div>
+      {other && <CommCardView name={other.displayName} card={other.commCard} status={other.status} />}
       <p className="text-sm text-ink-2">
         Only the two of you can read this chat. Messages still go through your review before sending, and any
         simpler version you open is only for you.

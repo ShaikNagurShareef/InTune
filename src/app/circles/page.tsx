@@ -14,5 +14,13 @@ export default async function CirclesPage() {
     listCircles(user.id),
     listMyInvitations(user),
   ]);
-  return <CirclesHome initial={circles} quiet={prefs.quietMode} invitations={invites} name={user.displayName} />;
+  return (
+    <CirclesHome
+      initial={circles}
+      quiet={prefs.quietMode}
+      invitations={invites}
+      name={user.displayName}
+      status={prefs.status}
+    />
+  );
 }

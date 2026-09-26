@@ -4,6 +4,7 @@ import { preferences, users } from "@/lib/db/schema";
 import { AppError } from "@/lib/errors";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import type { PreferencesInput } from "@/lib/validation";
+import type { CommCard, StatusId } from "@/lib/social";
 
 export interface NewAccount {
   email: string;
@@ -80,4 +81,20 @@ export async function resetPreferences(userId: string): Promise<Preferences> {
     .where(eq(preferences.userId, userId))
     .returning();
   return row;
+}
+
+/** Energy status the person chooses; visible only to people who share a circle with them. */
+export async function setStatus(userId: string, status: StatusId): Promise<void> {
+  await getPreferences(userId);
+  await db().update(preferences).set({ status, updatedAt: new Date() }).where(eq(preferences.userId, userId));
+}
+
+/** "How to talk with me" card; visible only to people who share a circle with them. */
+export async function setCommCard(userId: string, card: CommCard): Promise<void> {
+  await getPreferences(userId);
+  const empty = card.chips.length === 0 && card.note.length === 0;
+  await db()
+    .update(preferences)
+    .set({ commCard: empty ? null : card, updatedAt: new Date() })
+    .where(eq(preferences.userId, userId));
 }

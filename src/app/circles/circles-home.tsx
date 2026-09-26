@@ -10,6 +10,8 @@ import { shortTime } from "@/lib/client/time";
 import { Avatar } from "@/components/avatar";
 import { Button, Notice, inputClass } from "@/components/ui";
 import { NewChat } from "./new-chat";
+import { StatusPicker } from "@/components/status-picker";
+import { StatusBadge } from "@/components/comm-card";
 import { Invitations, type MyInvitation } from "./invitations";
 
 interface ChatSummary {
@@ -20,6 +22,7 @@ interface ChatSummary {
   unread: number;
   memberCount: number;
   otherUserId: string | null;
+  otherStatus: string | null;
   last: { text: string | null; senderName: string; mine: boolean; at: string } | null;
   lastActivity: string;
 }
@@ -49,6 +52,7 @@ function ChatRow({ chat, quiet }: { chat: ChatSummary; quiet: boolean }) {
           <span className="flex items-baseline gap-2">
             <span className={`truncate text-lg ${hasUnread ? "font-bold" : "font-semibold"}`}>{chat.name}</span>
             {chat.kind === "group" && <span className="shrink-0 text-xs text-ink-2">Circle</span>}
+            {chat.kind === "direct" && <StatusBadge status={chat.otherStatus} />}
             <time
               dateTime={chat.lastActivity}
               suppressHydrationWarning
@@ -74,11 +78,12 @@ function ChatRow({ chat, quiet }: { chat: ChatSummary; quiet: boolean }) {
   );
 }
 
-export function CirclesHome({ initial, quiet, invitations, name }: {
+export function CirclesHome({ initial, quiet, invitations, name, status }: {
   initial: ChatSummary[];
   quiet: boolean;
   invitations: MyInvitation[];
   name: string;
+  status: string;
 }) {
   const router = useRouter();
   const hasKey = useHasGeminiKey();
@@ -105,8 +110,8 @@ export function CirclesHome({ initial, quiet, invitations, name }: {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 lg:grid-cols-[1fr_22rem]">
-      <section aria-labelledby="chats-heading">
+    <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <section aria-labelledby="chats-heading" className="min-w-0">
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <div className="flex-1">
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-teal">Hello, {name}</p>
@@ -116,6 +121,7 @@ export function CirclesHome({ initial, quiet, invitations, name }: {
             ✎ New chat
           </Button>
         </div>
+        <div className="mb-4"><StatusPicker initial={status} /></div>
         {isPicking && <div className="mb-4"><NewChat onClose={() => setIsPicking(false)} /></div>}
         <Invitations initial={invitations} />
 

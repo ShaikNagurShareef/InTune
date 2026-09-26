@@ -19,6 +19,7 @@ export interface Draft {
   text: string;
   aiAssisted: boolean;
   assist: AssistInfo | null;
+  toneTags: string[];
   status: string;
 }
 

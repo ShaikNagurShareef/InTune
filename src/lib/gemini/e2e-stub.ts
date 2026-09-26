@@ -13,7 +13,13 @@ export const e2eStubTransport: GeminiTransport = {
   async generate(_creds, req) {
     const input = req.parts.map((p) => p.text ?? "").join("\n");
     if (req.system === SIMPLIFY_SYSTEM) {
-      return JSON.stringify({ simplified_text: "Yes. Let's sit outside on Friday.", kept_details: ["Friday"] });
+      return JSON.stringify({
+        simplified_text: "Do you want to come to dinner on Friday? It is loud inside. Can we sit outside?",
+        kept_details: ["Friday"],
+        asking: "Will you come to dinner on Friday, and is sitting outside OK?",
+        reply_expected: "yes",
+        unclear: "",
+      });
     }
     if (req.system === CHECK_SYSTEM) {
       return JSON.stringify({ meaning_preserved: true, unsupported_additions: [], lost_meaning: [], needs_clarification: false, question: "", choices: [] });

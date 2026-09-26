@@ -37,6 +37,9 @@ export type CheckOutput = z.infer<typeof checkOutput>;
 export const simplifyOutput = z.object({
   simplified_text: z.string(),
   kept_details: z.array(z.string()),
+  asking: z.string(),
+  reply_expected: z.enum(["yes", "no", "unclear"]),
+  unclear: z.string(),
 });
 export type SimplifyOutput = z.infer<typeof simplifyOutput>;
 
@@ -85,5 +88,8 @@ export const SIMPLIFY_SYSTEM = [
   "Use plain words and short sentences. Keep every date, time, number, name, condition, refusal (no/not) and every expression of uncertainty.",
   "Do not add advice, feelings, reasons, or interpretation of the sender's intent. Do not answer the message.",
   "List the critical details you kept in kept_details.",
+  "asking: in plain words, the concrete thing the sender asks the reader to do, decide or answer (for example 'Can you bring food?'). Empty string if the message asks nothing.",
+  "reply_expected: 'yes' if the message asks a question or requests something, 'no' if it only shares information or says no reply is needed, 'unclear' otherwise.",
+  "unclear: one short sentence naming anything genuinely ambiguous in the words (a missing time, a vague 'something'), or an empty string. Never guess the sender's feelings, mood or hidden intentions; if meaning depends on tone, say it is unclear and that the reader could ask.",
   UNTRUSTED,
 ].join("\n");

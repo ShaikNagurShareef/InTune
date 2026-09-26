@@ -5,6 +5,7 @@ import { idParam, type Ctx } from "@/lib/api";
 import { deleteDraft, getOwnedDraft, updateDraft } from "@/lib/services/drafts";
 import { getOwnedMedia } from "@/lib/services/media";
 import { draftText, sourceMode, uuid } from "@/lib/validation";
+import { toneTags } from "@/lib/social";
 
 type P = Ctx<{ id: string }>;
 
@@ -17,6 +18,7 @@ const patch = z.strictObject({
   media_id: uuid.nullable().optional(),
   transcript: draftText.nullable().optional(),
   use_original: z.boolean().optional(),
+  tone_tags: toneTags.optional(),
 });
 
 export const GET = route<P>(async (req, ctx) => {
@@ -36,6 +38,7 @@ export const PATCH = route<P>(async (req, ctx) => {
     mediaId: input.media_id,
     transcript: input.transcript,
     useOriginal: input.use_original,
+    toneTags: input.tone_tags,
   });
   return json(draft);
 });

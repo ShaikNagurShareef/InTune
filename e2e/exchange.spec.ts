@@ -66,13 +66,14 @@ test("G1: compose → clarify → approve → receive → simplify → reply", a
   const incoming = ana.page.getByRole("listitem").filter({ hasText: "sit outside?" });
   await expect(incoming).toBeVisible();
   await expect(incoming.getByText("AI-assisted · approved by sender")).toBeVisible();
-  await incoming.getByRole("button", { name: "Make clearer" }).click();
+  await incoming.getByRole("button", { name: "💡 Help me understand" }).click();
   await expect(incoming.getByText("only you see this")).toBeVisible();
+  await expect(incoming.getByText("What they’re asking")).toBeVisible();
 
   // Ana replies in her own words (manual path).
   await incoming.getByRole("button", { name: "↩ Reply" }).click();
   await ana.page.getByLabel("Your message").fill("Yes! Outside on Friday works.");
-  await ana.page.getByRole("button", { name: "Send my own words" }).click();
+  await ana.page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(ana.page.getByText("✓ Sent.")).toBeVisible();
 
   // Ben sees the reply appear by polling.
@@ -88,8 +89,11 @@ test("manual messaging works with no key, using only the keyboard", async ({ bro
   await expect(page.getByText("Wording help is off on this device")).toBeVisible();
   await page.getByLabel("Your message").focus();
   await page.keyboard.type("Hello from the keyboard");
-  await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "Send my own words" })).toBeFocused();
+  const send = page.getByRole("button", { name: "Send", exact: true });
+  for (let i = 0; i < 15 && !(await send.evaluate((el) => el === document.activeElement)); i++) {
+    await page.keyboard.press("Tab");
+  }
+  await expect(send).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("listitem").filter({ hasText: "Hello from the keyboard" })).toBeVisible();
 });
@@ -111,7 +115,9 @@ test("direct chat: start from New chat, unread in the list, reply", async ({ bro
   await zoe.page.getByRole("button", { name: "Max" }).click();
   await expect(zoe.page.getByText("Direct chat · only you two")).toBeVisible();
   await zoe.page.getByLabel("Your message").fill("Just us: are you free Sunday?");
-  await zoe.page.getByRole("button", { name: "Send my own words" }).click();
+  await zoe.page.getByRole("button", { name: "Add tone" }).click();
+  await zoe.page.getByRole("button", { name: "No rush" }).click();
+  await zoe.page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(zoe.page.getByText("✓ Sent.")).toBeVisible();
 
   // Max sees it at the top of Chats with an unread badge, opens it and replies.
@@ -121,7 +127,8 @@ test("direct chat: start from New chat, unread in the list, reply", async ({ bro
   await expect(row.getByText("1 unread")).toBeAttached();
   await row.click();
   await expect(max.page.getByText("Just us: are you free Sunday?")).toBeVisible();
+  await expect(max.page.getByRole("list", { name: "Tone chosen by the sender" }).getByText("No rush")).toBeVisible();
   await max.page.getByLabel("Your message").fill("Yes, Sunday works");
-  await max.page.getByRole("button", { name: "Send my own words" }).click();
+  await max.page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(zoe.page.getByText("Yes, Sunday works")).toBeVisible({ timeout: 15_000 });
 });

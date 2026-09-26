@@ -13,6 +13,7 @@ import { DirectPanel } from "./direct-panel";
 import { Avatar } from "@/components/avatar";
 import { HeaderHeight } from "@/components/header-height";
 import { Button } from "@/components/ui";
+import { statusInfo } from "@/lib/social";
 import type { CircleInfo, FeedPage, Me, PhraseLite, ReplyTarget } from "./types";
 
 const POLL_MS = 3000;
@@ -49,8 +50,12 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
   });
 
   const isDirect = circle.kind === "direct";
+  const other = isDirect ? circle.members.find((m) => m.id !== me.id) : undefined;
+  const otherStatus = other ? statusInfo(other.status) : null;
   const subtitle = isDirect
-    ? "Direct chat · only you two"
+    ? otherStatus && otherStatus.id !== "none"
+      ? `${otherStatus.icon} ${otherStatus.label}`
+      : "Direct chat · only you two"
     : `Circle · ${circle.members.length} ${circle.members.length === 1 ? "member" : "members"}`;
 
   return (

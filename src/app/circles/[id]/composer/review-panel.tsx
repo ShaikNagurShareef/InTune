@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/client/api";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import type { Draft } from "./types";
+import { ToneChips } from "./composer-parts";
 
 interface Props {
   draft: Draft;
@@ -89,6 +90,18 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
     }
   };
 
+  const changeTones = async (toneTags: string[]) => {
+    try {
+      const next = await api<Draft>(`/api/v1/drafts/${draft.id}`, {
+        method: "PATCH",
+        body: { expected_version: draft.version, text, tone_tags: toneTags },
+      });
+      onDraftChange(next);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't change the tone.");
+    }
+  };
+
   const useOriginal = async () => {
     try {
       const next = await api<Draft>(`/api/v1/drafts/${draft.id}`, {
@@ -135,6 +148,8 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
       <p id="review-help" className="text-sm text-ink-2">
         Edit anything. Changing the words means you approve the new version.
       </p>
+
+      <ToneChips value={draft.toneTags} onChange={changeTones} />
 
       {hasPlaceholder && (
         <Notice tone="uncertain" title="Something is still missing">

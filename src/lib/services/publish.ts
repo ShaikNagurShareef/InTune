@@ -74,6 +74,8 @@ export interface PublishInput {
   idempotencyKey: string;
   draftId: string | null;
   approvalId: string | null;
+  /** Sender-chosen tone tags; defaults to none. */
+  toneTags?: string[];
 }
 
 export interface PublishResult {
@@ -83,7 +85,14 @@ export interface PublishResult {
 
 function payloadHashOf(input: PublishInput): string {
   return sha256(
-    JSON.stringify([input.circleId, input.replyToId, input.text.normalize("NFC"), input.draftId, input.approvalId]),
+    JSON.stringify([
+      input.circleId,
+      input.replyToId,
+      input.text.normalize("NFC"),
+      input.draftId,
+      input.approvalId,
+      [...(input.toneTags ?? [])].sort(),
+    ]),
   );
 }
 
@@ -94,7 +103,9 @@ async function verifyApproval(tx: Db, userId: string, input: PublishInput): Prom
     return false;
   }
   const draft = await getOwnedDraft(userId, input.draftId, tx, true);
-  if (draft.status === "SENT" || draft.circleId !== input.circleId || draft.replyToId !== input.replyToId) {
+  const sameTags = [...draft.toneTags].sort().join(",") === [...(input.toneTags ?? [])].sort().join(",");
+  // Tone tags live on the versioned draft, so an approval also covers exactly these tags.
+  if (draft.status === "SENT" || draft.circleId !== input.circleId || draft.replyToId !== input.replyToId || !sameTags) {
     throw new AppError("stale_version", APPROVAL_STALE);
   }
   if (!input.approvalId) {
@@ -166,6 +177,7 @@ export async function publishMessage(userId: string, input: PublishInput): Promi
         replyToId: input.replyToId,
         text: input.text,
         aiAssisted,
+        toneTags: input.toneTags ?? [],
         approvalId: input.approvalId,
         idempotencyKey: input.idempotencyKey,
         payloadHash,

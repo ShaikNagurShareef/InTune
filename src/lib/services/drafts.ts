@@ -15,6 +15,7 @@ export interface NewDraft {
   replyToId: string | null;
   sourceMode: SourceMode;
   sourceText: string;
+  toneTags?: string[];
 }
 
 export async function createDraft(userId: string, input: NewDraft): Promise<Draft> {
@@ -35,6 +36,7 @@ export async function createDraft(userId: string, input: NewDraft): Promise<Draf
       sourceMode: input.sourceMode,
       sourceText: input.sourceText,
       text: input.sourceText,
+      toneTags: input.toneTags ?? [],
     })
     .returning();
   return row;
@@ -58,6 +60,7 @@ export interface DraftPatch {
   sourceMode?: SourceMode;
   mediaId?: string | null;
   transcript?: string | null;
+  toneTags?: string[];
   /** "Send original": replace assisted wording with the person's own words. */
   useOriginal?: boolean;
 }
@@ -78,6 +81,7 @@ export async function updateDraft(userId: string, draftId: string, patch: DraftP
     ...(patch.sourceMode !== undefined && { sourceMode: patch.sourceMode }),
     ...(patch.mediaId !== undefined && { mediaId: patch.mediaId }),
     ...(patch.transcript !== undefined && { transcript: patch.transcript }),
+    ...(patch.toneTags !== undefined && { toneTags: patch.toneTags }),
     // A transcript is itself Gemini output, so media-sourced words always go through approval.
     ...(patch.useOriginal && {
       text: current.transcript ?? originalText,

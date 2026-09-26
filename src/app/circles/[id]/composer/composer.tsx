@@ -9,6 +9,7 @@ import type { CircleInfo, Me, PhraseLite, ReplyTarget } from "../types";
 import { Recorder, type Capture } from "./recorder";
 import { ReviewPanel } from "./review-panel";
 import { SymbolBoard } from "./symbol-board";
+import { ModeBar, QuickReplies, ToneChips } from "./composer-parts";
 import { uploadCapture, type UploadMode } from "./upload";
 import type { Draft, InputMode, JobView, Pending, WordingMode } from "./types";
 
@@ -25,12 +26,6 @@ interface Props {
   onSent: () => void;
 }
 
-const MODES: { value: InputMode; label: string }[] = [
-  { value: "type", label: "Type" },
-  { value: "symbols", label: "Phrases" },
-  { value: "speak", label: "Speak" },
-  { value: "video", label: "Video" },
-];
 const WORDING: { value: WordingMode; label: string }[] = [
   { value: "keep", label: "Keep my wording" },
   { value: "clearer", label: "Make clearer" },
@@ -43,6 +38,18 @@ const MANUAL_REASONS: Record<string, string> = {
 };
 
 const storageKey = (circleId: string) => `intune.compose.${circleId}`;
+const WORDING_KEY = "intune.wording";
+
+/** "Keep my wording" by default: help should never nudge people into masking their own voice. */
+function readWording(): WordingMode {
+  if (typeof window === "undefined") return "keep";
+  try {
+    const saved = window.localStorage.getItem(WORDING_KEY);
+    return saved === "clearer" || saved === "shorter" ? saved : "keep";
+  } catch {
+    return "keep";
+  }
+}
 
 function readSaved(circleId: string): string {
   if (typeof window === "undefined") return "";
@@ -65,7 +72,8 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
   const [history, setHistory] = useState<string[]>([]);
   const [capture, setCapture] = useState<Capture | null>(null);
   const consent = useMediaConsent();
-  const [wording, setWording] = useState<WordingMode>("clearer");
+  const [wording, setWording] = useState<WordingMode>(readWording);
+  const [tones, setTones] = useState<string[]>([]);
   const [stage, setStage] = useState<Stage>("compose");
   const [stageLabel, setStageLabel] = useState("Starting");
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -124,6 +132,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
     setError(null);
     setSendError(null);
     setOtherAnswer(null);
+    setTones([]);
     onClearReply();
   };
 
@@ -184,7 +193,13 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
     setStageLabel(isMedia ? "Uploading privately" : "Starting");
     try {
       let created = await api<Draft>("/api/v1/drafts", {
-        body: { circle_id: circle.id, reply_to_id: replyTo?.id ?? null, source_mode: mode, source_text: isMedia ? "" : text },
+        body: {
+          circle_id: circle.id,
+          reply_to_id: replyTo?.id ?? null,
+          source_mode: mode,
+          source_text: isMedia ? "" : text,
+          tone_tags: tones,
+        },
         signal,
       });
       if (isMedia) {
@@ -270,6 +285,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
           circle_id: circle.id,
           text: current.text,
           reply_to_id: current.replyToId,
+          tone_tags: current.toneTags,
           draft_id: current.id,
           approval_id: current.aiAssisted ? approvalId : null,
         },
@@ -294,10 +310,17 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
     setIsSending(true);
     setSendError(null);
     setSentNote(null);
-    const scope = `manual:${replyTo?.id ?? ""}:${text}`;
+    const scope = `manual:${replyTo?.id ?? ""}:${tones.join(",")}:${text}`;
     try {
       await api("/api/v1/messages", {
-        body: { circle_id: circle.id, text, reply_to_id: replyTo?.id ?? null, draft_id: null, approval_id: null },
+        body: {
+          circle_id: circle.id,
+          text,
+          reply_to_id: replyTo?.id ?? null,
+          draft_id: null,
+          approval_id: null,
+          tone_tags: tones,
+        },
         idempotencyKey: keyFor(scope),
       });
       // The key only protects retries of this send; the same words sent later are a new message.
@@ -309,6 +332,20 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
       setSendError(`Not sent. ${describe(err)}`);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const switchMode = (next: InputMode) => {
+    setMode(next);
+    setCapture(null);
+  };
+
+  const chooseWording = (next: WordingMode) => {
+    setWording(next);
+    try {
+      window.localStorage.setItem(WORDING_KEY, next);
+    } catch {
+      // Not remembered; the choice still applies now.
     }
   };
 
@@ -345,110 +382,102 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
       {error && <div className="mb-3"><Notice tone="warn">{error}</Notice></div>}
 
       {stage === "compose" && (
-        <div className="space-y-3">
-          <div role="radiogroup" aria-label="How do you want to say it?" className="flex gap-1 rounded-xl bg-paper-2 p-1">
-            {MODES.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                role="radio"
-                aria-checked={mode === m.value}
-                onClick={() => {
-                  setMode(m.value);
-                  setCapture(null);
-                }}
-                className={`min-h-11 flex-1 rounded-lg px-2 text-sm font-bold ${mode === m.value ? "bg-card shadow-[var(--shadow)]" : "text-ink-2 hover:text-ink"}`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-
+        <div className="space-y-2">
           {mode === "symbols" && <SymbolBoard phrases={phrases} onPick={pickPhrase} />}
 
-          {!isMedia && (
-            <div>
-              <label htmlFor="compose-text" className="mb-1 block text-sm font-bold">
-                {mode === "symbols" ? "Your message (you can edit it)" : "Your message"}
-              </label>
+          {isMedia ? (
+            <div className="space-y-3 rounded-2xl border border-line bg-paper p-3">
+              <ModeBar mode={mode} onChange={switchMode} />
+              {hasKey ? (
+                <>
+                  <Recorder
+                    key={mode}
+                    kind={mode === "speak" ? "audio" : "video"}
+                    onCapture={setCapture}
+                    onPermissionDenied={() => switchMode("type")}
+                  />
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(e) => setMediaConsent(e.target.checked)}
+                      className="mt-1 h-5 w-5"
+                    />
+                    <span>
+                      I understand my recording is sent to Google Gemini with my key to turn it into words. InTune deletes
+                      the recording after processing and never shares it with the circle.
+                    </span>
+                  </label>
+                </>
+              ) : (
+                needsKeyNotice
+              )}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-line bg-paper transition focus-within:border-teal focus-within:shadow-[var(--shadow)]">
+              <label htmlFor="compose-text" className="sr-only">Your message</label>
               <textarea
                 id="compose-text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={2}
                 maxLength={2000}
-                placeholder="Say it however it comes. You can get help with wording."
-                className={`${inputClass} text-lg`}
+                placeholder={mode === "symbols" ? "Tap phrases above, then edit here" : "Say it however it comes…"}
+                className="block max-h-40 min-h-12 w-full resize-none bg-transparent px-4 pt-3 text-lg outline-none [field-sizing:content]"
               />
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-2">
-                <span>{text.length}/2000</span>
+              <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+                <ModeBar mode={mode} onChange={switchMode} />
                 {mode === "symbols" && (
                   <>
                     <Button tone="ghost" className="text-sm" onClick={undo} disabled={!history.length}>Undo</Button>
                     <Button tone="ghost" className="text-sm" onClick={() => { setHistory((h) => [...h, text]); setText(""); }} disabled={!text}>Clear</Button>
                   </>
                 )}
+                <span className={`ml-auto px-2 text-xs ${text.length > 1800 ? "font-bold text-clay" : "text-ink-2"}`}>
+                  {text.length > 0 ? `${text.length}/2000` : ""}
+                </span>
               </div>
             </div>
           )}
 
-          {isMedia && (
-            hasKey ? (
-              <div className="space-y-3">
-                <Recorder
-                  key={mode}
-                  kind={mode === "speak" ? "audio" : "video"}
-                  onCapture={setCapture}
-                  onPermissionDenied={() => setMode("type")}
-                />
-                <label className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={consent}
-                    onChange={(e) => setMediaConsent(e.target.checked)}
-                    className="mt-1 h-5 w-5"
-                  />
-                  <span>
-                    I understand my recording is sent to Google Gemini with my key to turn it into words. InTune deletes the
-                    recording after processing and never shares it with the circle.
-                  </span>
-                </label>
-              </div>
-            ) : (
-              needsKeyNotice
-            )
+          {!isMedia && !text && (
+            <QuickReplies phrases={phrases} onPick={pickPhrase} />
           )}
 
-          <div className="flex flex-wrap items-end gap-2">
+          <ToneChips value={tones} onChange={setTones} />
+
+          <div className="flex flex-wrap items-center gap-2">
+            {!isMedia && (
+              <Button tone="primary" onClick={sendManual} disabled={!text.trim() || isSending}>
+                {isSending ? "Sending… not sent yet" : "Send"}
+              </Button>
+            )}
             {hasKey && (
-              <div className="flex flex-wrap items-end gap-2">
-                <label className="block">
-                  <span className="mb-1 block text-sm font-bold">Wording help</span>
-                  <select value={wording} onChange={(e) => setWording(e.target.value as WordingMode)} className={`${inputClass} w-auto`}>
-                    {WORDING.map((w) => <option key={w.value} value={w.value}>{w.label}</option>)}
-                  </select>
-                </label>
+              <span className="inline-flex flex-wrap items-center gap-1">
                 <Button
-                  tone="primary"
+                  tone={isMedia ? "primary" : "quiet"}
                   onClick={startAssist}
                   disabled={isMedia ? !capture || !consent : !text.trim()}
                 >
-                  {isMedia ? "Turn into words" : "Help me word it"}
+                  {isMedia ? "Turn into words" : "✨ Help me word it"}
                 </Button>
-              </div>
+                <label className="inline-flex items-center">
+                  <span className="sr-only">Wording help style</span>
+                  <select
+                    value={wording}
+                    onChange={(e) => chooseWording(e.target.value as WordingMode)}
+                    className="min-h-11 rounded-xl border border-line bg-card px-2 text-sm text-ink-2"
+                  >
+                    {WORDING.map((w) => <option key={w.value} value={w.value}>{w.label}</option>)}
+                  </select>
+                </label>
+              </span>
             )}
             {!isMedia && (
-              <Button tone={hasKey ? "quiet" : "primary"} onClick={sendManual} disabled={!text.trim() || isSending}>
-                {isSending ? "Sending… not sent yet" : "Send my own words"}
-              </Button>
+              <span className="ml-auto truncate text-xs text-ink-2">To: {memberNames.join(", ")}</span>
             )}
           </div>
           {!isMedia && !hasKey && needsKeyNotice}
-          {!isMedia && (
-            <p className="truncate text-xs text-ink-2">
-              To: {circle.name} · {memberNames.join(", ")}
-            </p>
-          )}
           {sendError && <Notice tone="warn">{sendError} <button className="font-bold underline" onClick={sendManual}>Retry</button></Notice>}
         </div>
       )}

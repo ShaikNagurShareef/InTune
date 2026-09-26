@@ -11,11 +11,18 @@ import { getMessageForMember } from "./messages";
 
 const SIMPLIFY_LIMIT_PER_HOUR = 120;
 
+export interface AidSummary {
+  asking: string;
+  replyExpected: "yes" | "no" | "unclear";
+  unclear: string;
+}
+
 export interface ReadingAid {
   messageId: string;
   messageVersion: number;
   simplifiedText: string;
   warnings: string[];
+  summary: AidSummary | null;
   modelId: string;
 }
 
@@ -46,6 +53,7 @@ export async function simplifyForReader(
       messageVersion: cached.messageVersion,
       simplifiedText: cached.simplifiedText,
       warnings: (cached.warnings as string[] | null) ?? [],
+      summary: (cached.summary as AidSummary | null) ?? null,
       modelId: cached.modelId,
     };
   }
@@ -58,15 +66,30 @@ export async function simplifyForReader(
   );
   const lost = diffSlots(message.text, data.simplified_text).lost;
   const warnings = lost.map((l) => `The original also mentions ${describeSlot(l)}. Check the original.`);
+  // Sender-chosen tags outrank the model's reading of whether a reply is needed.
+  const noReplyTag = message.toneTags.includes("no_reply_needed");
+  const summary: AidSummary = {
+    asking: data.asking.trim().slice(0, 300),
+    replyExpected: noReplyTag ? "no" : data.reply_expected,
+    unclear: data.unclear.trim().slice(0, 300),
+  };
   const aid = {
     messageId,
     userId,
     messageVersion: message.version,
     simplifiedText: data.simplified_text.trim(),
     warnings,
+    summary,
     modelId: creds.model,
   };
   await db().insert(readingAids).values(aid).onConflictDoNothing();
   void recordEvent("simplify", { ms: Date.now() - started, warnings: warnings.length, model: creds.model });
-  return { messageId, messageVersion: aid.messageVersion, simplifiedText: aid.simplifiedText, warnings, modelId: aid.modelId };
+  return {
+    messageId,
+    messageVersion: aid.messageVersion,
+    simplifiedText: aid.simplifiedText,
+    warnings,
+    summary,
+    modelId: aid.modelId,
+  };
 }

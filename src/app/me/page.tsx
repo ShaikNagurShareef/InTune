@@ -7,6 +7,7 @@ import { listBlocked } from "@/lib/services/moderation";
 import { PreferencesForm } from "@/components/preferences-form";
 import { PageTitle } from "@/components/ui";
 import { Phrasebook } from "./phrasebook";
+import { CommCardEditor } from "./comm-card-editor";
 import { BlockedList, DataControls } from "./data-controls";
 
 export const metadata: Metadata = { title: "My communication" };
@@ -25,6 +26,13 @@ export default async function MePage() {
           <PreferencesForm initial={prefs} />
         </section>
         <div className="space-y-8">
+          <section aria-labelledby="card-h" className="rounded-2xl border border-teal/30 bg-card p-6 shadow-[var(--shadow)]">
+            <h2 id="card-h" className="font-display text-2xl font-semibold">How to talk with me</h2>
+            <p className="mb-4 mt-1 text-sm text-ink-2">
+              Tell the people in your circles what helps. Understanding goes both ways — this puts some of the work on them.
+            </p>
+            <CommCardEditor initial={(prefs.commCard as { chips: string[]; note: string } | null) ?? null} name={user.displayName} />
+          </section>
           <section aria-labelledby="phrases-h" className="rounded-2xl border border-line bg-card p-6 shadow-[var(--shadow)]">
             <h2 id="phrases-h" className="font-display text-2xl font-semibold">Phrasebook</h2>
             <p className="mb-4 mt-1 text-sm text-ink-2">

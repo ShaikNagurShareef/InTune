@@ -1,7 +1,14 @@
+export interface CommCardInfo {
+  chips: string[];
+  note: string;
+}
+
 export interface Member {
   id: string;
   displayName: string;
   role: string;
+  status: string;
+  commCard: CommCardInfo | null;
 }
 
 export interface CircleInfo {
@@ -21,6 +28,7 @@ export interface FeedMessage {
   version: number;
   aiAssisted: boolean;
   approvedBySender: boolean;
+  toneTags: string[];
   createdAt: string;
   edited: boolean;
   deleted: boolean;

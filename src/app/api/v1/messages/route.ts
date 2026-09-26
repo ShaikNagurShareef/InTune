@@ -6,6 +6,7 @@ import { recordEvent } from "@/lib/metrics";
 import { rateLimit } from "@/lib/rate-limit";
 import { publishMessage } from "@/lib/services/publish";
 import { idempotencyKey, messageText, uuid } from "@/lib/validation";
+import { toneTags } from "@/lib/social";
 
 const body = z.strictObject({
   circle_id: uuid,
@@ -13,6 +14,7 @@ const body = z.strictObject({
   reply_to_id: uuid.nullable(),
   draft_id: uuid.nullable(),
   approval_id: uuid.nullable(),
+  tone_tags: toneTags.default([]),
 });
 
 /** Publishes only on an explicit Send. Retries with the same Idempotency-Key return the same message ID (FR22). */
@@ -28,6 +30,7 @@ export const POST = route(async (req) => {
     replyToId: input.reply_to_id,
     draftId: input.draft_id,
     approvalId: input.approval_id,
+    toneTags: input.tone_tags,
     idempotencyKey: key.data,
   });
   void recordEvent("send", { replayed: result.replayed, assisted: input.approval_id !== null }, user.id);

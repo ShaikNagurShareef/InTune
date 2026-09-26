@@ -6,13 +6,10 @@ import { api, ApiError } from "@/lib/client/api";
 import { useHasGeminiKey } from "@/lib/client/byok";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { speak, useSpeechAvailable } from "@/components/speech";
+import { toneInfo } from "@/lib/social";
 import type { FeedMessage, ReplyTarget } from "./types";
+import { UnderstandPanel, type ReadingAid } from "./understand-panel";
 
-interface ReadingAid {
-  messageVersion: number;
-  simplifiedText: string;
-  warnings: string[];
-}
 
 interface Props {
   message: FeedMessage;
@@ -82,7 +79,7 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, onRepl
       setAid(await api<ReadingAid>(`/api/v1/messages/${m.id}/simplify`, { method: "POST", gemini: true }));
       setAidState("idle");
     } catch (err) {
-      setAidError(err instanceof ApiError ? err.message : "Couldn't make a simpler version.");
+      setAidError(err instanceof ApiError ? err.message : "Couldn't prepare reading help.");
       setAidState("error");
     }
   };
@@ -123,20 +120,30 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, onRepl
     }
   };
 
+  const tags = m.toneTags.map(toneInfo).filter((t) => t !== undefined);
+  const time = (
+    <time dateTime={m.createdAt} className="text-xs text-ink-2" suppressHydrationWarning>
+      {timeFormat.format(new Date(m.createdAt))}
+    </time>
+  );
+
   return (
-    <li
-      className={`group w-fit min-w-[12rem] max-w-[92%] border px-4 py-3 shadow-[var(--shadow)] sm:max-w-[78%] ${
+    <li className={`flex flex-col ${m.mine ? "items-end" : "items-start"}`}>
+    <div
+      className={`group relative w-fit min-w-[12rem] max-w-[92%] border px-4 py-3 shadow-[var(--shadow)] sm:max-w-[78%] ${
         m.mine
-          ? "ml-auto rounded-2xl rounded-br-md border-teal/25 bg-teal-soft"
-          : "mr-auto rounded-2xl rounded-bl-md border-line bg-card"
-      }`}
+          ? "rounded-2xl rounded-br-md border-teal/25 bg-teal-soft"
+          : "rounded-2xl rounded-bl-md border-line bg-card"
+      } ${tags.length ? "mb-4" : ""}`}
     >
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        {showSender && !m.mine && <span className="font-bold">{m.senderName}</span>}
-        <time dateTime={m.createdAt} className="text-xs text-ink-2" suppressHydrationWarning>{timeFormat.format(new Date(m.createdAt))}</time>
-        {m.aiAssisted && <Tag tone="ai">AI-assisted · approved by sender</Tag>}
-        {m.edited && <Tag>Edited</Tag>}
-      </div>
+      {!m.mine && (
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          {showSender && <span className="font-bold">{m.senderName}</span>}
+          {time}
+          {m.aiAssisted && <Tag tone="ai">AI-assisted · approved by sender</Tag>}
+          {m.edited && <Tag>Edited</Tag>}
+        </div>
+      )}
       {replyTo && (
         <p className="mt-1 border-l-2 border-line pl-2 text-sm text-ink-2">
           Replying to {replyTo.mine ? "you" : replyTo.senderName}: {replyTo.deleted ? "(deleted)" : (replyTo.text ?? "").slice(0, 80)}
@@ -153,17 +160,9 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, onRepl
           </div>
         </div>
       ) : (
-        <div className={`mt-2 ${aid ? "grid gap-3 md:grid-cols-2" : ""}`}>
+        <div className={m.mine ? "" : "mt-1"}>
           <p className="whitespace-pre-wrap break-words text-lg leading-relaxed">{text}</p>
-          {aid && (
-            <div className="rounded-xl border border-teal/30 bg-card p-3">
-              <p className="text-xs font-bold uppercase tracking-wider text-teal">Simpler version · AI-assisted · only you see this</p>
-              <p className="mt-1 whitespace-pre-wrap break-words text-lg">{aid.simplifiedText}</p>
-              {aid.warnings.map((w) => (
-                <p key={w} className="mt-2 rounded-lg bg-clay-soft px-2 py-1 text-sm">{w}</p>
-              ))}
-            </div>
-          )}
+          {aid && <UnderstandPanel aid={aid} />}
         </div>
       )}
 
@@ -192,11 +191,11 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, onRepl
           {!m.mine && (
             hasKey ? (
               <Button tone="ghost" className="text-sm" onClick={aid ? () => setAid(null) : simplify} disabled={aidState === "loading"}>
-                {aidState === "loading" ? "Simplifying…" : aid ? "Hide simpler version" : "Make clearer"}
+                {aidState === "loading" ? "Reading…" : aid ? "Hide help" : "💡 Help me understand"}
               </Button>
             ) : (
               <Link href="/settings" className="inline-flex min-h-11 items-center px-3 text-sm text-ink-2 underline underline-offset-4">
-                Make clearer (add key)
+                💡 Help me understand (add key)
               </Link>
             )
           )}
@@ -222,6 +221,27 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, onRepl
           )}
         </div>
       )}
+      {tags.length > 0 && (
+        <ul
+          aria-label="Tone chosen by the sender"
+          className={`absolute -bottom-3.5 flex gap-1 ${m.mine ? "right-3" : "left-3"}`}
+        >
+          {tags.map((t) => (
+            <li key={t.id} className="inline-flex items-center gap-1 rounded-full border border-line bg-card px-2 py-0.5 text-xs font-bold shadow-[var(--shadow)]">
+              <span aria-hidden="true">{t.icon}</span>
+              {t.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+    {m.mine && (
+      <p className="mt-1 flex flex-wrap justify-end gap-x-2 px-1 text-xs text-ink-2">
+        {time}
+        {m.aiAssisted && <span>AI-assisted · you approved</span>}
+        {m.edited && <span>Edited</span>}
+      </p>
+    )}
     </li>
   );
 }

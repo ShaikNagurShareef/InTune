@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import useSWR from "swr";
 import { api, ApiError, fetcher } from "@/lib/client/api";
 import { Button, Notice, inputClass } from "@/components/ui";
+import { CommCardView, StatusBadge } from "@/components/comm-card";
 import type { CircleInfo, Me } from "./types";
 
 interface PendingInvite {
@@ -87,6 +88,7 @@ export function MembersPanel({ circle, me }: { circle: CircleInfo; me: Me }) {
               <span className="font-bold">{m.displayName}</span>
               {m.id === me.id && <span className="text-sm text-ink-2">(you)</span>}
               {m.role === "owner" && <span className="text-sm text-teal">owner</span>}
+              <StatusBadge status={m.status} />
               {m.id !== me.id && (
                 <Button tone="ghost" className="text-sm" onClick={() => messagePerson(m.id)}>
                   Message
@@ -113,6 +115,12 @@ export function MembersPanel({ circle, me }: { circle: CircleInfo; me: Me }) {
                     Remove
                   </Button>
                 </span>
+              )}
+              {m.id !== me.id && (m.commCard || m.status !== "none") && (
+                <details className="w-full">
+                  <summary className="min-h-9 cursor-pointer py-1 text-sm font-bold text-teal">How to talk with {m.displayName}</summary>
+                  <CommCardView name={m.displayName} card={m.commCard} status={m.status} />
+                </details>
               )}
             </li>
           ))}

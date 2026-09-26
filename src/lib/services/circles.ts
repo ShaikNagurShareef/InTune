@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, gt, gte, isNull, ne, notInArray, sql } from "drizzle-orm";
 import { db, type Db } from "@/lib/db";
-import { blocks, circles, memberships, messages, users } from "@/lib/db/schema";
+import { blocks, circles, memberships, messages, preferences, users } from "@/lib/db/schema";
+import type { CommCard } from "@/lib/social";
 import { AppError } from "@/lib/errors";
 import { requireMember, requireOwner } from "@/lib/authz";
 
@@ -31,6 +32,7 @@ export interface CircleSummary {
   unread: number;
   memberCount: number;
   otherUserId: string | null;
+  otherStatus: string | null;
   last: LastMessage | null;
   lastActivity: string;
 }
@@ -41,11 +43,15 @@ async function blockedIds(userId: string): Promise<string[]> {
 }
 
 /** For a direct chat, the other person (display name and id); for groups, null. */
-async function otherMember(userId: string, circleId: string): Promise<{ id: string; displayName: string } | null> {
+async function otherMember(
+  userId: string,
+  circleId: string,
+): Promise<{ id: string; displayName: string; status: string } | null> {
   const [row] = await db()
-    .select({ id: users.id, displayName: users.displayName })
+    .select({ id: users.id, displayName: users.displayName, status: sql<string>`coalesce(${preferences.status}, 'none')` })
     .from(memberships)
     .innerJoin(users, eq(users.id, memberships.userId))
+    .leftJoin(preferences, eq(preferences.userId, users.id))
     .where(and(eq(memberships.circleId, circleId), ne(memberships.userId, userId)))
     .limit(1);
   return row ?? null;
@@ -122,6 +128,7 @@ export async function listCircles(userId: string): Promise<CircleSummary[]> {
         unread: Number(n),
         memberCount: await activeMemberCount(row.id),
         otherUserId: other?.id ?? null,
+        otherStatus: other?.status ?? null,
         last,
         lastActivity: last?.at ?? new Date(row.createdAt).toISOString(),
       };
@@ -132,12 +139,20 @@ export async function listCircles(userId: string): Promise<CircleSummary[]> {
     .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));
 }
 
+export interface MemberInfo {
+  id: string;
+  displayName: string;
+  role: string;
+  status: string;
+  commCard: CommCard | null;
+}
+
 export interface CircleDetail {
   id: string;
   name: string;
   kind: CircleKind;
   role: string;
-  members: { id: string; displayName: string; role: string }[];
+  members: MemberInfo[];
 }
 
 export async function getCircle(userId: string, circleId: string): Promise<CircleDetail> {
@@ -151,13 +166,21 @@ export async function getCircle(userId: string, circleId: string): Promise<Circl
   return { id: circle.id, name: other?.displayName ?? circle.name, kind: circle.kind as CircleKind, role: me.role, members };
 }
 
-export async function activeMembers(circleId: string): Promise<CircleDetail["members"]> {
-  return db()
-    .select({ id: users.id, displayName: users.displayName, role: memberships.role })
+export async function activeMembers(circleId: string): Promise<MemberInfo[]> {
+  const rows = await db()
+    .select({
+      id: users.id,
+      displayName: users.displayName,
+      role: memberships.role,
+      status: sql<string>`coalesce(${preferences.status}, 'none')`,
+      commCard: preferences.commCard,
+    })
     .from(memberships)
     .innerJoin(users, eq(users.id, memberships.userId))
+    .leftJoin(preferences, eq(preferences.userId, users.id))
     .where(and(eq(memberships.circleId, circleId), isNull(memberships.removedAt)))
     .orderBy(asc(memberships.joinedAt));
+  return rows.map((r) => ({ ...r, commCard: (r.commCard as CommCard | null) ?? null }));
 }
 
 export async function markRead(userId: string, circleId: string): Promise<void> {
