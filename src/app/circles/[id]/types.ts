@@ -7,6 +7,7 @@ export interface Member {
 export interface CircleInfo {
   id: string;
   name: string;
+  kind: "group" | "direct";
   role: string;
   members: Member[];
 }

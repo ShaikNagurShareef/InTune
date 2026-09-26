@@ -9,6 +9,10 @@ import type { UploadMode } from "./composer/upload";
 import type { InputMode } from "./composer/types";
 import { Feed } from "./feed";
 import { MembersPanel } from "./members-panel";
+import { DirectPanel } from "./direct-panel";
+import { Avatar } from "@/components/avatar";
+import { HeaderHeight } from "@/components/header-height";
+import { Button } from "@/components/ui";
 import type { CircleInfo, FeedPage, Me, PhraseLite, ReplyTarget } from "./types";
 
 const POLL_MS = 3000;
@@ -30,6 +34,7 @@ interface Props {
 
 export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode }: Props) {
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
   // Every message seen in any poll, by id, so nothing falls into a gap between the newest page and older pages.
   const [seen, setSeen] = useState(() => new Map(initialPage.messages.map((m) => [m.id, m])));
   const { data, mutate, error } = useSWR<FeedPage>(`/api/v1/circles/${circle.id}/messages`, fetcher, {
@@ -43,20 +48,48 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
       }),
   });
 
+  const isDirect = circle.kind === "direct";
+  const subtitle = isDirect
+    ? "Direct chat · only you two"
+    : `Circle · ${circle.members.length} ${circle.members.length === 1 ? "member" : "members"}`;
+
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 lg:grid-cols-[1fr_20rem]">
-      <div className="min-w-0 space-y-6">
-        <header>
-          <Link href="/circles" className="text-sm font-bold text-ink-2 hover:text-ink">← All circles</Link>
-          <h1 className="font-display mt-1 text-4xl font-semibold sm:text-5xl">{circle.name}</h1>
-          <p className="text-ink-2">Private · {circle.members.length} {circle.members.length === 1 ? "member" : "members"}</p>
+    <div className="mx-auto flex h-[calc(100dvh-var(--app-header-h,4.75rem))] max-w-6xl gap-6 sm:px-4 sm:py-4">
+      <HeaderHeight />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden border-line bg-paper sm:rounded-2xl sm:border">
+        <header className="flex shrink-0 items-center gap-3 border-b border-line bg-card px-3 py-2">
+          <Link href="/circles" aria-label="Back to chats" className="grid h-11 w-11 place-items-center rounded-full text-xl hover:bg-paper-2">
+            ←
+          </Link>
+          <Avatar name={circle.name} seed={isDirect ? (circle.members.find((m) => m.id !== me.id)?.id ?? circle.id) : circle.id} group={!isDirect} size="sm" />
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display truncate text-2xl font-semibold leading-tight">{circle.name}</h1>
+            <p className="truncate text-sm text-ink-2">{subtitle}</p>
+          </div>
+          <Button tone="ghost" className="lg:hidden" aria-expanded={showInfo} onClick={() => setShowInfo((v) => !v)}>
+            {isDirect ? "Info" : "Members"}
+          </Button>
         </header>
+        {showInfo && (
+          <div className="max-h-[50%] shrink-0 overflow-y-auto border-b border-line p-3 lg:hidden">
+            {isDirect ? <DirectPanel circle={circle} me={me} /> : <MembersPanel circle={circle} me={me} />}
+          </div>
+        )}
         {error && (
-          <p role="alert" className="rounded-xl bg-clay-soft px-4 py-2">
-            You may no longer have access to this circle, or you’re offline. New messages will appear when it’s back.
+          <p role="alert" className="shrink-0 bg-clay-soft px-4 py-2 text-sm">
+            You may no longer have access to this chat, or you’re offline. New messages will appear when it’s back.
           </p>
         )}
-        <Feed circleId={circle.id} latest={data ?? initialPage} seen={[...seen.values()]} mutate={mutate} audioRate={prefs.audioRate} onReply={setReplyTo} />
+        <Feed
+          circleId={circle.id}
+          latest={data ?? initialPage}
+          seen={[...seen.values()]}
+          mutate={mutate}
+          audioRate={prefs.audioRate}
+          showSenders={!isDirect}
+          onReply={setReplyTo}
+        />
+        <div className="max-h-[55%] shrink-0 overflow-y-auto border-t border-line bg-paper-2/60 p-2">
         <Composer
           circle={circle}
           me={me}
@@ -67,8 +100,11 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
           uploadMode={uploadMode}
           onSent={() => void mutate()}
         />
+        </div>
       </div>
-      <MembersPanel circle={circle} me={me} />
+      <div className="hidden w-80 shrink-0 overflow-y-auto lg:block">
+        {isDirect ? <DirectPanel circle={circle} me={me} /> : <MembersPanel circle={circle} me={me} />}
+      </div>
     </div>
   );
 }

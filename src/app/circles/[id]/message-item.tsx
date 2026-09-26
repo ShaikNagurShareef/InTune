@@ -18,6 +18,7 @@ interface Props {
   message: FeedMessage;
   replyTo: FeedMessage | undefined;
   audioRate: number;
+  showSender: boolean;
   onReply: (target: ReplyTarget) => void;
   onHide: (id: string) => void;
   onChanged: () => void;
@@ -55,7 +56,7 @@ function ListenControls({ text, rate }: { text: string; rate: number }) {
   );
 }
 
-export function MessageItem({ message: m, replyTo, audioRate, onReply, onHide, onChanged }: Props) {
+export function MessageItem({ message: m, replyTo, audioRate, showSender, onReply, onHide, onChanged }: Props) {
   const hasKey = useHasGeminiKey();
   const [storedAid, setAid] = useState<ReadingAid | null>(null);
   // A reading aid for an older version is dropped as soon as the sender's correction arrives.
@@ -68,8 +69,8 @@ export function MessageItem({ message: m, replyTo, audioRate, onReply, onHide, o
 
   if (m.deleted) {
     return (
-      <li className="rounded-xl border border-dashed border-line px-4 py-3 text-sm italic text-ink-2">
-        {m.senderName}’s message was deleted.
+      <li className={`w-fit max-w-[85%] rounded-2xl border border-dashed border-line px-4 py-2 text-sm italic text-ink-2 ${m.mine ? "ml-auto" : ""}`}>
+        {m.mine ? "You deleted this message." : `${m.senderName}’s message was deleted.`}
       </li>
     );
   }
@@ -124,12 +125,14 @@ export function MessageItem({ message: m, replyTo, audioRate, onReply, onHide, o
 
   return (
     <li
-      className={`group rounded-2xl border px-4 py-3 ${
-        m.mine ? "ml-6 border-teal/25 bg-teal-soft/60 sm:ml-16" : "mr-6 border-line bg-card sm:mr-16"
+      className={`group w-fit min-w-[12rem] max-w-[92%] border px-4 py-3 shadow-[var(--shadow)] sm:max-w-[78%] ${
+        m.mine
+          ? "ml-auto rounded-2xl rounded-br-md border-teal/25 bg-teal-soft"
+          : "mr-auto rounded-2xl rounded-bl-md border-line bg-card"
       }`}
     >
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="font-bold">{m.mine ? "You" : m.senderName}</span>
+        {showSender && !m.mine && <span className="font-bold">{m.senderName}</span>}
         <time dateTime={m.createdAt} className="text-xs text-ink-2" suppressHydrationWarning>{timeFormat.format(new Date(m.createdAt))}</time>
         {m.aiAssisted && <Tag tone="ai">AI-assisted · approved by sender</Tag>}
         {m.edited && <Tag>Edited</Tag>}

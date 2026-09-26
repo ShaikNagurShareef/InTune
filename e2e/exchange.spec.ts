@@ -13,7 +13,7 @@ async function signUp(browser: Browser, name: string): Promise<{ page: Page; ema
   await page.getByLabel("Password").fill("password123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.getByRole("button", { name: "Save and continue" }).click();
-  await expect(page.getByRole("heading", { name: "Your circles" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Chats" })).toBeVisible();
   return { page, email };
 }
 
@@ -91,4 +91,37 @@ test("manual messaging works with no key, using only the keyboard", async ({ bro
   await expect(page.getByRole("button", { name: "Send my own words" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("listitem").filter({ hasText: "Hello from the keyboard" })).toBeVisible();
+});
+
+test("direct chat: start from New chat, unread in the list, reply", async ({ browser }) => {
+  const zoe = await signUp(browser, "Zoe");
+  const max = await signUp(browser, "Max");
+  await zoe.page.getByLabel("Circle name").fill("Book club");
+  await zoe.page.getByRole("button", { name: "Create circle" }).click();
+  await zoe.page.getByLabel("Their email (recommended)").fill(max.email);
+  await zoe.page.getByRole("button", { name: "Create invitation link" }).click();
+  const link = await zoe.page.getByLabel("Private link — send it yourself").inputValue();
+  await max.page.goto(link);
+  await max.page.getByRole("button", { name: "Join circle" }).click();
+  await max.page.waitForURL(/\/circles\/[0-9a-f-]+$/);
+
+  // Zoe starts a one-to-one chat with Max from the chat list.
+  await zoe.page.goto("/circles");
+  await zoe.page.getByRole("button", { name: "✎ New chat" }).click();
+  await zoe.page.getByRole("button", { name: "Max" }).click();
+  await expect(zoe.page.getByText("Direct chat · only you two")).toBeVisible();
+  await zoe.page.getByLabel("Your message").fill("Just us: are you free Sunday?");
+  await zoe.page.getByRole("button", { name: "Send my own words" }).click();
+  await expect(zoe.page.getByText("✓ Sent.")).toBeVisible();
+
+  // Max sees it at the top of Chats with an unread badge, opens it and replies.
+  await max.page.goto("/circles");
+  const row = max.page.getByRole("link", { name: /Zoe.*are you free Sunday/ });
+  await expect(row).toBeVisible();
+  await expect(row.getByText("1 unread")).toBeAttached();
+  await row.click();
+  await expect(max.page.getByText("Just us: are you free Sunday?")).toBeVisible();
+  await max.page.getByLabel("Your message").fill("Yes, Sunday works");
+  await max.page.getByRole("button", { name: "Send my own words" }).click();
+  await expect(zoe.page.getByText("Yes, Sunday works")).toBeVisible({ timeout: 15_000 });
 });

@@ -4,6 +4,7 @@ import { approvals, drafts, memberships, messages, outbox } from "@/lib/db/schem
 import { AppError } from "@/lib/errors";
 import { requireMember } from "@/lib/authz";
 import { audienceHash, contentHash, sha256 } from "@/lib/hash";
+import { assertCanSendDirect } from "./direct";
 import { getOwnedDraft } from "./drafts";
 
 const APPROVAL_STALE = "The message or audience changed after you approved it. Please review and approve again.";
@@ -151,6 +152,7 @@ export async function publishMessage(userId: string, input: PublishInput): Promi
   const payloadHash = payloadHashOf(input);
   return db().transaction(async (tx) => {
     await requireMember(userId, input.circleId, tx);
+    await assertCanSendDirect(tx, userId, input.circleId);
     const existing = await findExisting(tx, userId, input.idempotencyKey);
     if (existing) return replay(existing, payloadHash);
 

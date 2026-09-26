@@ -326,13 +326,14 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
   };
 
   const needsKeyNotice = !hasKey && (
-    <Notice tone="info" title="Wording help is off on this device">
-      <Link href="/settings" className="font-bold underline">Add your Gemini key</Link> to use it. You can always send your own words.
-    </Notice>
+    <p className="text-sm text-ink-2">
+      Wording help is off on this device ·{" "}
+      <Link href="/settings" className="font-bold text-teal underline underline-offset-2">add your Gemini key</Link>
+    </p>
   );
 
   return (
-    <section aria-labelledby="composer-heading" className="rounded-2xl border border-line bg-card p-4 shadow-[var(--shadow)] sm:p-5">
+    <section aria-labelledby="composer-heading" className="rounded-2xl border border-line bg-card p-3 shadow-[var(--shadow)]">
       <h2 id="composer-heading" className="sr-only">Write a message</h2>
       {replyTo && stage === "compose" && (
         <p className="mb-3 flex items-center gap-2 rounded-lg bg-paper-2 px-3 py-2 text-sm">
@@ -344,8 +345,8 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
       {error && <div className="mb-3"><Notice tone="warn">{error}</Notice></div>}
 
       {stage === "compose" && (
-        <div className="space-y-4">
-          <div role="radiogroup" aria-label="How do you want to say it?" className="flex flex-wrap gap-1 rounded-xl bg-paper-2 p-1">
+        <div className="space-y-3">
+          <div role="radiogroup" aria-label="How do you want to say it?" className="flex gap-1 rounded-xl bg-paper-2 p-1">
             {MODES.map((m) => (
               <button
                 key={m.value}
@@ -356,7 +357,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
                   setMode(m.value);
                   setCapture(null);
                 }}
-                className={`min-h-11 flex-1 rounded-lg px-3 font-bold ${mode === m.value ? "bg-card shadow-[var(--shadow)]" : "text-ink-2 hover:text-ink"}`}
+                className={`min-h-11 flex-1 rounded-lg px-2 text-sm font-bold ${mode === m.value ? "bg-card shadow-[var(--shadow)]" : "text-ink-2 hover:text-ink"}`}
               >
                 {m.label}
               </button>
@@ -367,14 +368,14 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
 
           {!isMedia && (
             <div>
-              <label htmlFor="compose-text" className="mb-1 block font-bold">
+              <label htmlFor="compose-text" className="mb-1 block text-sm font-bold">
                 {mode === "symbols" ? "Your message (you can edit it)" : "Your message"}
               </label>
               <textarea
                 id="compose-text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                rows={3}
+                rows={2}
                 maxLength={2000}
                 placeholder="Say it however it comes. You can get help with wording."
                 className={`${inputClass} text-lg`}
@@ -418,7 +419,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
             )
           )}
 
-          <div className="flex flex-wrap items-end gap-3 border-t border-line pt-4">
+          <div className="flex flex-wrap items-end gap-2">
             {hasKey && (
               <div className="flex flex-wrap items-end gap-2">
                 <label className="block">
@@ -444,7 +445,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
           </div>
           {!isMedia && !hasKey && needsKeyNotice}
           {!isMedia && (
-            <p className="text-sm text-ink-2">
+            <p className="truncate text-xs text-ink-2">
               To: {circle.name} · {memberNames.join(", ")}
             </p>
           )}

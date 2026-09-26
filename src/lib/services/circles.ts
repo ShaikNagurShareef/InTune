@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, isNull, ne, notInArray, sql, count } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, isNull, ne, notInArray, sql } from "drizzle-orm";
 import { db, type Db } from "@/lib/db";
 import { blocks, circles, memberships, messages, users } from "@/lib/db/schema";
 import { AppError } from "@/lib/errors";
@@ -14,11 +14,25 @@ export async function createCircle(userId: string, name: string): Promise<{ id: 
   });
 }
 
+export type CircleKind = "group" | "direct";
+
+export interface LastMessage {
+  text: string | null;
+  senderName: string;
+  mine: boolean;
+  at: string;
+}
+
 export interface CircleSummary {
   id: string;
+  kind: CircleKind;
   name: string;
   role: string;
   unread: number;
+  memberCount: number;
+  otherUserId: string | null;
+  last: LastMessage | null;
+  lastActivity: string;
 }
 
 async function blockedIds(userId: string): Promise<string[]> {
@@ -26,12 +40,55 @@ async function blockedIds(userId: string): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
+/** For a direct chat, the other person (display name and id); for groups, null. */
+async function otherMember(userId: string, circleId: string): Promise<{ id: string; displayName: string } | null> {
+  const [row] = await db()
+    .select({ id: users.id, displayName: users.displayName })
+    .from(memberships)
+    .innerJoin(users, eq(users.id, memberships.userId))
+    .where(and(eq(memberships.circleId, circleId), ne(memberships.userId, userId)))
+    .limit(1);
+  return row ?? null;
+}
+
+async function lastVisibleMessage(
+  userId: string,
+  circleId: string,
+  joinedAt: Date,
+  hidden: string[],
+): Promise<LastMessage | null> {
+  const [row] = await db()
+    .select({ m: messages, senderName: users.displayName })
+    .from(messages)
+    .innerJoin(users, eq(users.id, messages.senderId))
+    .where(
+      and(
+        eq(messages.circleId, circleId),
+        gte(messages.createdAt, joinedAt),
+        hidden.length ? notInArray(messages.senderId, hidden) : undefined,
+      ),
+    )
+    .orderBy(desc(messages.createdAt), desc(messages.id))
+    .limit(1);
+  if (!row) return null;
+  return {
+    text: row.m.deletedAt ? null : row.m.text.slice(0, 120),
+    senderName: row.senderName,
+    mine: row.m.senderId === userId,
+    at: row.m.createdAt.toISOString(),
+  };
+}
+
+/** Chat list: circles and direct chats together, most recent activity first (like a messaging inbox). */
 export async function listCircles(userId: string): Promise<CircleSummary[]> {
   const rows = await db()
     .select({
       id: circles.id,
       name: circles.name,
+      kind: circles.kind,
+      createdAt: circles.createdAt,
       role: memberships.role,
+      joinedAt: memberships.joinedAt,
       since: sql<Date>`coalesce(${memberships.lastReadAt}, ${memberships.joinedAt})`,
     })
     .from(memberships)
@@ -39,8 +96,11 @@ export async function listCircles(userId: string): Promise<CircleSummary[]> {
     .where(and(eq(memberships.userId, userId), isNull(memberships.removedAt), isNull(circles.deletedAt)))
     .orderBy(asc(circles.name));
   const hidden = await blockedIds(userId);
-  return Promise.all(
-    rows.map(async (row) => {
+  const summaries = await Promise.all(
+    rows.map(async (row): Promise<CircleSummary | null> => {
+      const other = row.kind === "direct" ? await otherMember(userId, row.id) : null;
+      // A direct chat with someone you blocked disappears from your list.
+      if (other && hidden.includes(other.id)) return null;
       const [{ n }] = await db()
         .select({ n: count() })
         .from(messages)
@@ -53,22 +113,42 @@ export async function listCircles(userId: string): Promise<CircleSummary[]> {
             hidden.length ? notInArray(messages.senderId, hidden) : undefined,
           ),
         );
-      return { id: row.id, name: row.name, role: row.role, unread: Number(n) };
+      const last = await lastVisibleMessage(userId, row.id, row.joinedAt, hidden);
+      return {
+        id: row.id,
+        kind: row.kind as CircleKind,
+        name: other ? other.displayName : row.name,
+        role: row.role,
+        unread: Number(n),
+        memberCount: await activeMemberCount(row.id),
+        otherUserId: other?.id ?? null,
+        last,
+        lastActivity: last?.at ?? new Date(row.createdAt).toISOString(),
+      };
     }),
   );
+  return summaries
+    .filter((s): s is CircleSummary => s !== null)
+    .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));
 }
 
 export interface CircleDetail {
   id: string;
   name: string;
+  kind: CircleKind;
   role: string;
   members: { id: string; displayName: string; role: string }[];
 }
 
 export async function getCircle(userId: string, circleId: string): Promise<CircleDetail> {
   const me = await requireMember(userId, circleId);
-  const [circle] = await db().select({ id: circles.id, name: circles.name }).from(circles).where(eq(circles.id, circleId));
-  return { ...circle, role: me.role, members: await activeMembers(circleId) };
+  const [circle] = await db()
+    .select({ id: circles.id, name: circles.name, kind: circles.kind })
+    .from(circles)
+    .where(eq(circles.id, circleId));
+  const members = await activeMembers(circleId);
+  const other = circle.kind === "direct" ? members.find((m) => m.id !== userId) : undefined;
+  return { id: circle.id, name: other?.displayName ?? circle.name, kind: circle.kind as CircleKind, role: me.role, members };
 }
 
 export async function activeMembers(circleId: string): Promise<CircleDetail["members"]> {
@@ -101,6 +181,10 @@ export async function removeMember(ownerId: string, circleId: string, memberId: 
 
 export async function leaveCircle(userId: string, circleId: string): Promise<void> {
   const me = await requireMember(userId, circleId);
+  const [circle] = await db().select({ kind: circles.kind }).from(circles).where(eq(circles.id, circleId));
+  if (circle?.kind === "direct") {
+    throw new AppError("conflict", "Direct chats can't be left. Block the person if you don't want their messages.");
+  }
   if (me.role === "owner") {
     throw new AppError("conflict", "As the owner, transfer ownership or delete the circle before leaving.");
   }

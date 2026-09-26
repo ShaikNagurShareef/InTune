@@ -5,7 +5,7 @@ import { countInvitesForEmail } from "@/lib/services/invites";
 import { listCircles } from "@/lib/services/circles";
 import { CirclesHome } from "./circles-home";
 
-export const metadata: Metadata = { title: "Circles" };
+export const metadata: Metadata = { title: "Chats" };
 
 export default async function CirclesPage() {
   const user = await requirePageUser("/circles");

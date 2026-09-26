@@ -33,6 +33,15 @@ export function MembersPanel({ circle, me }: { circle: CircleInfo; me: Me }) {
     }
   };
 
+  const messagePerson = async (userId: string) => {
+    try {
+      const { id } = await api<{ id: string }>("/api/v1/direct", { body: { user_id: userId } });
+      router.push(`/circles/${id}`);
+    } catch (err) {
+      setMessage({ tone: "warn", text: err instanceof ApiError ? err.message : "Couldn't open the chat." });
+    }
+  };
+
   const handleInvite = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const email = String(new FormData(event.currentTarget).get("email") ?? "").trim();
@@ -65,6 +74,11 @@ export function MembersPanel({ circle, me }: { circle: CircleInfo; me: Me }) {
               <span className="font-bold">{m.displayName}</span>
               {m.id === me.id && <span className="text-sm text-ink-2">(you)</span>}
               {m.role === "owner" && <span className="text-sm text-teal">owner</span>}
+              {m.id !== me.id && (
+                <Button tone="ghost" className="text-sm" onClick={() => messagePerson(m.id)}>
+                  Message
+                </Button>
+              )}
               {isOwner && m.id !== me.id && (
                 <span className="ml-auto flex gap-1">
                   <Button

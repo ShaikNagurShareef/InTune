@@ -6,31 +6,89 @@ import { useState, type FormEvent } from "react";
 import useSWR from "swr";
 import { api, ApiError, fetcher } from "@/lib/client/api";
 import { useHasGeminiKey } from "@/lib/client/byok";
+import { shortTime } from "@/lib/client/time";
+import { Avatar } from "@/components/avatar";
 import { Button, Notice, inputClass } from "@/components/ui";
+import { NewChat } from "./new-chat";
 
-interface CircleSummary {
+interface ChatSummary {
   id: string;
+  kind: "group" | "direct";
   name: string;
   role: string;
   unread: number;
+  memberCount: number;
+  otherUserId: string | null;
+  last: { text: string | null; senderName: string; mine: boolean; at: string } | null;
+  lastActivity: string;
 }
 
+type Filter = "all" | "group" | "direct";
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "direct", label: "Direct" },
+  { value: "group", label: "Circles" },
+];
 const POLL_MS = 5000;
 
+function preview(c: ChatSummary): string {
+  if (!c.last) return c.kind === "direct" ? "Say hello" : `${c.memberCount} ${c.memberCount === 1 ? "member" : "members"} · no messages yet`;
+  const body = c.last.text ?? "Message deleted";
+  if (c.last.mine) return `You: ${body}`;
+  return c.kind === "group" ? `${c.last.senderName}: ${body}` : body;
+}
+
+function ChatRow({ chat, quiet }: { chat: ChatSummary; quiet: boolean }) {
+  const hasUnread = !quiet && chat.unread > 0;
+  return (
+    <li>
+      <Link href={`/circles/${chat.id}`} className="flex min-h-[4.5rem] items-center gap-3 px-4 py-3 hover:bg-paper-2 focus-visible:bg-paper-2">
+        <Avatar name={chat.name} seed={chat.otherUserId ?? chat.id} group={chat.kind === "group"} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline gap-2">
+            <span className={`truncate text-lg ${hasUnread ? "font-bold" : "font-semibold"}`}>{chat.name}</span>
+            {chat.kind === "group" && <span className="shrink-0 text-xs text-ink-2">Circle</span>}
+            <time
+              dateTime={chat.lastActivity}
+              suppressHydrationWarning
+              className={`ml-auto shrink-0 text-xs ${hasUnread ? "font-bold text-teal" : "text-ink-2"}`}
+            >
+              {shortTime(chat.lastActivity)}
+            </time>
+          </span>
+          <span className="mt-0.5 flex items-center gap-2">
+            <span className={`truncate text-sm ${hasUnread ? "text-ink" : "text-ink-2"} ${chat.last?.text === null ? "italic" : ""}`}>
+              {preview(chat)}
+            </span>
+            {hasUnread && (
+              <span className="ml-auto grid h-6 min-w-6 shrink-0 place-items-center rounded-full bg-teal px-1.5 text-xs font-bold text-teal-ink">
+                {chat.unread}
+                <span className="sr-only"> unread</span>
+              </span>
+            )}
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 export function CirclesHome({ initial, quiet, pendingInvites, name }: {
-  initial: CircleSummary[];
+  initial: ChatSummary[];
   quiet: boolean;
   pendingInvites: number;
   name: string;
 }) {
   const router = useRouter();
   const hasKey = useHasGeminiKey();
-  const { data } = useSWR<{ circles: CircleSummary[] }>("/api/v1/circles", fetcher, {
+  const { data } = useSWR<{ circles: ChatSummary[] }>("/api/v1/circles", fetcher, {
     fallbackData: { circles: initial },
     refreshInterval: POLL_MS,
   });
+  const [filter, setFilter] = useState<Filter>("all");
+  const [isPicking, setIsPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const circles = data?.circles ?? initial;
+  const chats = (data?.circles ?? initial).filter((c) => filter === "all" || c.kind === filter);
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -46,44 +104,50 @@ export function CirclesHome({ initial, quiet, pendingInvites, name }: {
   };
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[1fr_22rem]">
-      <section aria-labelledby="circles-heading">
-        <p className="text-sm font-bold uppercase tracking-[0.14em] text-teal">Hello, {name}</p>
-        <h1 id="circles-heading" className="font-display mb-6 text-5xl font-semibold">Your circles</h1>
+    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 lg:grid-cols-[1fr_22rem]">
+      <section aria-labelledby="chats-heading">
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-teal">Hello, {name}</p>
+            <h1 id="chats-heading" className="font-display text-5xl font-semibold">Chats</h1>
+          </div>
+          <Button tone="primary" onClick={() => setIsPicking((v) => !v)} aria-expanded={isPicking}>
+            ✎ New chat
+          </Button>
+        </div>
+        {isPicking && <div className="mb-4"><NewChat onClose={() => setIsPicking(false)} /></div>}
         {pendingInvites > 0 && (
-          <div className="mb-6">
+          <div className="mb-4">
             <Notice tone="info" title={`You have ${pendingInvites} invitation${pendingInvites === 1 ? "" : "s"} waiting`}>
               Open the invitation link you were sent to see who is in the circle before you decide.
             </Notice>
           </div>
         )}
-        {circles.length === 0 ? (
+
+        <div role="group" aria-label="Show" className="mb-3 flex gap-1 rounded-xl bg-paper-2 p-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              aria-pressed={filter === f.value}
+              onClick={() => setFilter(f.value)}
+              className={`min-h-11 flex-1 rounded-lg px-3 font-bold ${filter === f.value ? "bg-card shadow-[var(--shadow)]" : "text-ink-2 hover:text-ink"}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {chats.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line bg-card p-8">
-            <p className="font-display text-2xl">No circles yet.</p>
+            <p className="font-display text-2xl">{filter === "direct" ? "No direct chats yet." : "Nothing here yet."}</p>
             <p className="mt-2 text-ink-2">
-              Create one for the people you talk with most — family, a friend, a club. Then share a private invitation link.
+              Create a circle for the people you talk with most, invite them with a private link, then chat together or one-to-one.
             </p>
           </div>
         ) : (
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-[var(--shadow)]">
-            {circles.map((c) => (
-              <li key={c.id}>
-                <Link href={`/circles/${c.id}`} className="flex min-h-16 items-center gap-4 px-5 py-4 hover:bg-paper-2">
-                  <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-teal-soft font-display text-xl font-semibold text-teal">
-                    {c.name.slice(0, 1).toUpperCase()}
-                  </span>
-                  <span className="flex-1">
-                    <span className="block text-lg font-bold">{c.name}</span>
-                    <span className="text-sm text-ink-2">{c.role === "owner" ? "You own this circle" : "Member"}</span>
-                  </span>
-                  {!quiet && c.unread > 0 && (
-                    <span className="rounded-full bg-teal px-3 py-1 text-sm font-bold text-teal-ink">
-                      {c.unread} new<span className="sr-only"> messages</span>
-                    </span>
-                  )}
-                </Link>
-              </li>
-            ))}
+            {chats.map((c) => <ChatRow key={c.id} chat={c} quiet={quiet} />)}
           </ul>
         )}
       </section>
@@ -91,7 +155,7 @@ export function CirclesHome({ initial, quiet, pendingInvites, name }: {
       <aside className="space-y-6">
         <form onSubmit={handleCreate} className="rounded-2xl border border-line bg-card p-5 shadow-[var(--shadow)]">
           <h2 className="font-display text-2xl font-semibold">New circle</h2>
-          <p className="mb-4 mt-1 text-sm text-ink-2">Private. Up to 20 people. Only members can read it.</p>
+          <p className="mb-4 mt-1 text-sm text-ink-2">A private group of up to 20 people. Only members can read it.</p>
           <label className="block">
             <span className="mb-1 block font-bold">Circle name</span>
             <input name="name" required maxLength={80} placeholder="e.g. Sunday dinner" className={inputClass} />
@@ -102,9 +166,7 @@ export function CirclesHome({ initial, quiet, pendingInvites, name }: {
         {!hasKey && (
           <div className="rounded-2xl border border-line bg-paper-2 p-5">
             <h2 className="font-bold">Want wording help?</h2>
-            <p className="mt-1 text-sm text-ink-2">
-              Add your own Gemini API key. It stays in this browser. You can message without it.
-            </p>
+            <p className="mt-1 text-sm text-ink-2">Add your own Gemini API key. It stays in this browser. You can message without it.</p>
             <Link href="/settings" className="mt-3 inline-flex min-h-11 items-center font-bold text-teal underline underline-offset-4">
               Add a key
             </Link>

@@ -44,6 +44,10 @@ export const preferences = pgTable("preferences", {
 export const circles = pgTable("circles", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  // "group" circles are named and invite-based; "direct" circles are one-to-one chats.
+  kind: text("kind").notNull().default("group"),
+  // Sorted "userA:userB" for direct chats, so each pair has exactly one conversation.
+  directKey: text("direct_key").unique(),
   ownerId: uuid("owner_id")
     .notNull()
     .references(() => users.id),
