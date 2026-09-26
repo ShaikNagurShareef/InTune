@@ -46,3 +46,7 @@ next-env.d.ts
 
 # Source requirements document (kept private)
 *.docx
+
+# demo video pipeline (narration cache, recordings, renders)
+/video/.cache/
+/video/out/

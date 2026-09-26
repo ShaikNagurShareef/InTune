@@ -1,0 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap");
+
+/* 1440×690 viewport, rendered at 4/3 → 1920×920 frames. */
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1440px; height: 690px; overflow: hidden; }
+body {
+  font-family: "Atkinson Hyperlegible", Verdana, sans-serif;
+  background: #f6f4ef;
+  color: #26332f;
+  padding: 72px 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+}
+body.dark { background: #1e2b27; color: #f6f4ef; }
+h1, h2, h3, .display { font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800; letter-spacing: -0.5px; }
+h1 { font-size: 120px; line-height: 1; }
+h2 { font-size: 52px; line-height: 1.12; }
+h3 { font-size: 28px; line-height: 1.2; font-weight: 700; }
+p { font-size: 26px; line-height: 1.4; }
+.eyebrow { font-size: 18px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: #3e7b70; }
+body.dark .eyebrow { color: #9fd0c4; }
+.muted { color: #5d6a65; }
+body.dark .muted { color: #bfd8d5; }
+.source { position: absolute; left: 96px; bottom: 36px; font-size: 16px; color: #6b7773; }
+body.dark .source { color: #9fb3ad; }
+.row { display: flex; gap: 24px; }
+.card { flex: 1; background: #fcfbf8; border: 1px solid #dfdad0; border-radius: 22px; padding: 28px; display: flex; flex-direction: column; gap: 10px; }
+.card p { font-size: 22px; color: #4f5c57; }
+.ai { color: #635b9e; }
+
+/* Steps: elements with data-show="n" appear when <body data-step> reaches n. */
+[data-show] { opacity: 0; transform: translateY(14px); transition: opacity 0.7s ease, transform 0.7s ease; }
+body[data-step="1"] [data-show="1"],
+body[data-step="2"] [data-show="1"], body[data-step="2"] [data-show="2"],
+body[data-step="3"] [data-show="1"], body[data-step="3"] [data-show="2"], body[data-step="3"] [data-show="3"],
+body[data-step="4"] [data-show] { opacity: 1; transform: none; }

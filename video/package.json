@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "InTune demo video pipeline (run from the repo root: npm run video)"
+}
