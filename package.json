@@ -18,7 +18,8 @@
     "video:tts": "tsx video/cli/tts.ts",
     "video:record": "tsx video/cli/record.ts",
     "video:render": "tsx video/cli/render.ts",
-    "video": "tsx video/cli/tts.ts && tsx video/cli/record.ts && tsx video/cli/render.ts"
+    "video": "tsx video/cli/tts.ts && tsx video/cli/record.ts && tsx video/cli/render.ts",
+    "screenshots": "tsx video/cli/screenshots.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

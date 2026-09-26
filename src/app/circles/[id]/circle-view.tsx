@@ -88,43 +88,48 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
       <section aria-labelledby="thread-h" className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-line px-3 sm:px-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-line px-3 sm:gap-3 sm:px-4">
           <Link href="/circles" aria-label="Back to chats" className="grid h-11 w-11 place-items-center rounded-full hover:bg-paper-2 md:hidden">
             <ArrowLeft aria-hidden="true" className="h-6 w-6" />
           </Link>
-          <Avatar name={circle.name} seed={other?.id ?? circle.id} group={!isDirect} size="sm" status={other?.status} />
+          {/* On phones the name gets the room; the avatar returns from the small breakpoint up. */}
+          <span className="hidden sm:block">
+            <Avatar name={circle.name} seed={other?.id ?? circle.id} group={!isDirect} size="sm" status={other?.status} />
+          </span>
           <div className="min-w-0 flex-1">
             <h1 id="thread-h" className="truncate font-extrabold leading-tight">{circle.name}</h1>
             <p className="truncate text-xs text-ink-2">{subtitle}</p>
           </div>
-          {callsEnabled && (
-            <>
-              <Link href={`/circles/${circle.id}/call?kind=audio`} aria-label="Start an audio call" title="Audio call" className="grid h-11 w-11 place-items-center rounded-full hover:bg-paper-2">
-                <Phone aria-hidden="true" className="h-6 w-6" />
-              </Link>
-              <Link href={`/circles/${circle.id}/call?kind=video`} aria-label="Start a video call" title="Video call" className="grid h-11 w-11 place-items-center rounded-full hover:bg-paper-2">
-                <Video aria-hidden="true" className="h-6 w-6" />
-              </Link>
-            </>
-          )}
-          <button
-            type="button"
-            aria-label="Plan it together"
-            title="Plan it together"
-            onClick={() => setShowPlan(true)}
-            className="grid h-11 w-11 place-items-center rounded-full text-ai hover:bg-paper-2"
-          >
-            <CalendarCheck aria-hidden="true" className="h-6 w-6" />
-          </button>
-          <button
-            type="button"
-            aria-label={showDetails ? "Hide details" : "Show details"}
-            aria-expanded={showDetails}
-            onClick={() => setShowDetails((v) => !v)}
-            className="grid h-11 w-11 place-items-center rounded-full hover:bg-paper-2"
-          >
-            <Info aria-hidden="true" className="h-6 w-6" strokeWidth={showDetails ? 2.6 : 2} />
-          </button>
+          <div className="flex shrink-0 items-center">
+            {callsEnabled && (
+              <>
+                <Link href={`/circles/${circle.id}/call?kind=audio`} aria-label="Start an audio call" title="Audio call" className="grid h-11 w-11 place-items-center rounded-full hover:bg-paper-2">
+                  <Phone aria-hidden="true" className="h-6 w-6" />
+                </Link>
+                <Link href={`/circles/${circle.id}/call?kind=video`} aria-label="Start a video call" title="Video call" className="grid h-11 w-11 place-items-center rounded-full hover:bg-paper-2">
+                  <Video aria-hidden="true" className="h-6 w-6" />
+                </Link>
+              </>
+            )}
+            <button
+              type="button"
+              aria-label="Plan it together"
+              title="Plan it together"
+              onClick={() => setShowPlan(true)}
+              className="grid h-11 w-11 place-items-center rounded-full text-ai hover:bg-paper-2"
+            >
+              <CalendarCheck aria-hidden="true" className="h-6 w-6" />
+            </button>
+            <button
+              type="button"
+              aria-label={showDetails ? "Hide details" : "Show details"}
+              aria-expanded={showDetails}
+              onClick={() => setShowDetails((v) => !v)}
+              className="grid h-11 w-11 place-items-center rounded-full hover:bg-paper-2"
+            >
+              <Info aria-hidden="true" className="h-6 w-6" strokeWidth={showDetails ? 2.6 : 2} />
+            </button>
+          </div>
         </header>
         {activeCall && (
           <div className="flex shrink-0 items-center gap-3 border-b border-line bg-sage-soft px-4 py-2" role="status">

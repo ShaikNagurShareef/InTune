@@ -65,6 +65,7 @@ test("group call: join from the chat, signals, and say-it-for-me with approval",
   await ivy.page.getByRole("button", { name: "More options" }).click();
   await ivy.page.getByRole("button", { name: /End call for everyone/ }).click();
   await ivy.page.getByRole("button", { name: "End for all" }).click();
-  await expect(ivy.page.getByRole("heading", { name: "You ended the call for everyone" })).toBeVisible();
+  // First use of the end-call route compiles it in dev, so allow extra time.
+  await expect(ivy.page.getByRole("heading", { name: "You ended the call for everyone" })).toBeVisible({ timeout: 45_000 });
   await expect(ray.page.getByRole("heading", { name: "The call ended" })).toBeVisible();
 });

@@ -14,10 +14,16 @@ const AI_ATTEMPTS = 3;
 export const AI_KEEP_START = 1.0;
 export const AI_KEEP_END = 0.4;
 
-export async function signedInPage(browser: Browser, user: DemoUser, opts: { fakeSpeech?: boolean } = {}): Promise<{ context: BrowserContext; page: Page }> {
+export interface PageOptions {
+  fakeSpeech?: boolean;
+  viewport?: { width: number; height: number };
+  scale?: number;
+}
+
+export async function signedInPage(browser: Browser, user: DemoUser, opts: PageOptions = {}): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({
-    viewport: VIEWPORT,
-    deviceScaleFactor: DEVICE_SCALE,
+    viewport: opts.viewport ?? VIEWPORT,
+    deviceScaleFactor: opts.scale ?? DEVICE_SCALE,
     permissions: ["camera", "microphone"],
     reducedMotion: "no-preference",
   });
