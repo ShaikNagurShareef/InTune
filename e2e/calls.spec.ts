@@ -54,9 +54,17 @@ test("group call: join from the chat, signals, and say-it-for-me with approval",
   await expect(ivyTranscript.getByText("I need a short break. I will be back in five minutes.")).toBeVisible();
   await expect(ivyTranscript.getByText("Ray · typed")).toBeVisible();
 
-  // Leaving is calm and says nothing was saved.
-  await ivy.page.getByRole("button", { name: "Leave the call" }).click();
-  await expect(ivy.page.getByRole("heading", { name: "You left the call" })).toBeVisible();
-  await expect(ivy.page.getByText("Captions and interpreter notes from the call were not saved.")).toBeVisible();
-  await expect(people(ray.page)).toHaveCount(1);
+  // Ray leaves calmly; Ivy (who started it) then ends the call for everyone.
+  await ray.page.getByRole("button", { name: "Leave the call" }).click();
+  await expect(ray.page.getByRole("heading", { name: "You left the call" })).toBeVisible();
+  await expect(ray.page.getByText("Captions and interpreter notes from the call were not saved.")).toBeVisible();
+  await expect(people(ivy.page)).toHaveCount(1);
+  await ray.page.getByRole("button", { name: "Join again" }).click();
+  await ray.page.getByRole("button", { name: "Join the call" }).click();
+  await expect(people(ivy.page)).toHaveCount(2);
+  await ivy.page.getByRole("button", { name: "More options" }).click();
+  await ivy.page.getByRole("button", { name: /End call for everyone/ }).click();
+  await ivy.page.getByRole("button", { name: "End for all" }).click();
+  await expect(ivy.page.getByRole("heading", { name: "You ended the call for everyone" })).toBeVisible();
+  await expect(ray.page.getByRole("heading", { name: "The call ended" })).toBeVisible();
 });

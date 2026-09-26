@@ -25,6 +25,8 @@ interface Props {
   notice: string | null;
   onNotice: (notice: string | null) => void;
   onSettings: (s: CallSettings) => void;
+  /** Records why we're about to disconnect (null to cancel), before LiveKit reports it. */
+  onLeaving: (reason: string | null) => void;
   onEnded: (reason: string) => void;
 }
 
@@ -49,7 +51,7 @@ function announcement(entries: TranscriptEntry[]): string {
   return `${last.from.name}: ${text}`;
 }
 
-export function CallRoom({ circle, callId, canEnd, audioRate, settings, notice, onNotice, onSettings, onEnded }: Props) {
+export function CallRoom({ circle, callId, canEnd, audioRate, settings, notice, onNotice, onSettings, onLeaving, onEnded }: Props) {
   const room = useRoomContext();
   const connection = useConnectionState();
   const count = useParticipants().length;
@@ -65,16 +67,20 @@ export function CallRoom({ circle, callId, canEnd, audioRate, settings, notice, 
   const update = (patch: Partial<CallSettings>) => onSettings({ ...settings, ...patch });
 
   async function endForEveryone() {
+    const reason = "You ended the call for everyone";
+    onLeaving(reason);
     try {
       await api(`/api/v1/calls/${callId}/end`, { method: "POST" });
-      onEnded("You ended the call for everyone");
+      onEnded(reason);
       await room.disconnect();
     } catch (err) {
+      onLeaving(null);
       onNotice(err instanceof ApiError ? err.message : "Couldn’t end the call. Please try again.");
     }
   }
 
   async function leave() {
+    onLeaving("You left the call");
     onEnded("You left the call");
     await room.disconnect();
   }

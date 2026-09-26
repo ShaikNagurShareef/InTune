@@ -113,25 +113,26 @@ function SignalMenu({ onSignal }: { onSignal: (kind: SignalKind) => void }) {
 
 function EndForEveryone({ onEnd }: { onEnd: () => void }) {
   const [confirming, setConfirming] = useState(false);
-  if (!confirming) {
-    return (
-      <button type="button" className={`${ITEM} text-clay`} onClick={() => setConfirming(true)}>
+  // The first button stays mounted, so focus never drops out of the menu while confirming.
+  return (
+    <>
+      <button type="button" aria-expanded={confirming} className={`${ITEM} text-clay`} onClick={() => setConfirming((v) => !v)}>
         <PhoneOff aria-hidden="true" className="h-5 w-5" /> End call for everyone…
       </button>
-    );
-  }
-  return (
-    <div className="space-y-2 px-3 py-1">
-      <p className="text-sm">End the call for everyone?</p>
-      <div className="flex gap-2">
-        <button type="button" className="min-h-11 flex-1 rounded-xl bg-clay px-3 text-sm font-bold text-paper" onClick={onEnd}>
-          End for all
-        </button>
-        <button type="button" className="min-h-11 flex-1 rounded-xl bg-paper-2 px-3 text-sm font-bold" onClick={() => setConfirming(false)}>
-          Keep going
-        </button>
-      </div>
-    </div>
+      {confirming && (
+        <div className="space-y-2 px-3 py-1">
+          <p className="text-sm">End the call for everyone?</p>
+          <div className="flex gap-2">
+            <button type="button" className="min-h-11 flex-1 rounded-xl bg-clay px-3 text-sm font-bold text-paper" onClick={onEnd}>
+              End for all
+            </button>
+            <button type="button" className="min-h-11 flex-1 rounded-xl bg-paper-2 px-3 text-sm font-bold" onClick={() => setConfirming(false)}>
+              Keep going
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

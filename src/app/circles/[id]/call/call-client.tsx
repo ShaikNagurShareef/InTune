@@ -53,6 +53,8 @@ export function CallClient({ me, circle, kind, audioRate, interpreterByDefault }
   const [notice, setNotice] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const connectedOnce = useRef(false);
+  /** Why this person is about to leave, so LiveKit's own disconnect event (which may arrive first) says the right thing. */
+  const leavingBecause = useRef<string | null>(null);
 
   async function join(chosen: CallSettings) {
     setJoining(true);
@@ -61,6 +63,7 @@ export function CallClient({ me, circle, kind, audioRate, interpreterByDefault }
       const { call } = await api<{ call: ActiveCall }>(`/api/v1/circles/${circle.id}/calls`, { body: { kind } });
       const access = await api<{ token: string; url: string; canEnd: boolean }>(`/api/v1/calls/${call.id}/token`, { method: "POST" });
       connectedOnce.current = false;
+      leavingBecause.current = null;
       setSettings(chosen);
       setNotice(null);
       setPhase({ name: "in-call", joined: { callId: call.id, ...access, initial: { mic: chosen.mic, camera: chosen.camera } } });
@@ -101,7 +104,9 @@ export function CallClient({ me, circle, kind, audioRate, interpreterByDefault }
       onConnected={() => {
         connectedOnce.current = true;
       }}
-      onDisconnected={(reason) => leaveWith((reason !== undefined && DISCONNECT_MESSAGES[reason]) || LOST_CONNECTION)}
+      onDisconnected={(reason) =>
+        leaveWith(leavingBecause.current ?? ((reason !== undefined && DISCONNECT_MESSAGES[reason]) || LOST_CONNECTION))
+      }
       onError={() => {
         // Before connecting, an error means we couldn't get in; afterwards it's usually a device problem.
         if (!connectedOnce.current) leaveWith("Couldn’t connect to the call. Check your connection and try again.");
@@ -125,6 +130,9 @@ export function CallClient({ me, circle, kind, audioRate, interpreterByDefault }
         notice={notice}
         onNotice={setNotice}
         onSettings={setSettings}
+        onLeaving={(reason) => {
+          leavingBecause.current = reason;
+        }}
         onEnded={leaveWith}
       />
     </LiveKitRoom>
