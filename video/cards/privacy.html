@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Private by design</title><link rel="stylesheet" href="card.css">
+<style>
+  body { gap: 18px; padding: 56px 96px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .card { padding: 18px 22px; gap: 6px; }
+  .card h3 { font-size: 23px; }
+  .card p { font-size: 18px; }
+  .note { font-size: 17px; color: #bfd8d5; }
+  body.dark .card { background: #26352f; border-color: #35463f; }
+  body.dark .card p { color: #bfd8d5; }
+</style></head>
+<body class="dark" data-step="0">
+  <p class="eyebrow">Privacy and data protection</p>
+  <h2 style="font-size:50px">Private by design, not by setting.</h2>
+  <div class="grid">
+    <div class="card" data-show="1"><h3>Invitation-only circles</h3><p>Every request checks membership. Outsiders learn nothing.</p></div>
+    <div class="card" data-show="1"><h3>Reading help is private</h3><p>Only the reader sees it. The sender’s words never change.</p></div>
+    <div class="card" data-show="1"><h3>Calls aren’t recorded</h3><p>Captions and interpreter notes vanish when you leave.</p></div>
+    <div class="card" data-show="2"><h3>Recordings are deleted</h3><p>Voice and video clips are erased once turned into words, or within 24 hours.</p></div>
+    <div class="card" data-show="2"><h3>No diagnosis, no mood tracking</h3><p>We never ask for one or infer one. Delete your account any time.</p></div>
+    <div class="card" data-show="2"><h3>Your key, your data</h3><p>Your own AI key stays in your browser. Logs hold no message content.</p></div>
+  </div>
+  <p class="note" data-show="3">Designed around data-protection principles: data minimisation, purpose limitation, storage limits and the right to erasure. AI features send text to the AI provider only when you use them. Not a certification.</p>
+</body>
+</html>

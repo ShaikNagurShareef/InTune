@@ -34,6 +34,32 @@ The goal is not more screen time. It's fewer misunderstandings between people wh
 
 Every feature works in groups (friend circles, families, teams) as well as one-to-one, and treats autistic ↔ autistic conversations as just as normal as mixed ones.
 
+## How it's different from a chat app with an AI assistant
+
+WhatsApp with Meta AI is great for everyday chat, and its assistant can help you write. InTune is built for one specific gap: people who communicate differently.
+
+| General messaging + AI assistant | InTune |
+| --- | --- |
+| AI helps you write your own messages | AI interprets **both ways**: what you mean for them, and what they mean for you (the ask, whether to reply, what's unclear) |
+| You copy AI suggestions yourself | You approve the **exact words and audience**. The AI can never send, and a lost "not", time or name is flagged. |
+| The same assistant for everyone | Built around **each person**: their own phrases ("red light"), a "How to talk with me" card, tone tags and energy status |
+| Group chats and calls as usual | **Plans** that fit everyone's stated needs, and **calls** with a private live interpreter, "say it for me" and signals |
+
+This compares design goals; it isn't a feature audit of any specific app.
+
+## Privacy and data protection
+
+- **Private circles:** invitation-only, and every request checks membership. Unrelated people get the same "not found" response, so they learn nothing.
+- **Private reading help:** only the reader sees it, and the sender's words never change.
+- **Calls:** never recorded. Captions and interpreter notes travel over the call's data channel and disappear when you leave.
+- **Recordings:** voice and video clips are erased once turned into words, or within 24 hours. Unsent drafts are removed after 24 hours.
+- **Sensitive data:** no diagnosis fields and no mood inference. People can delete their drafts, recordings or whole account at any time.
+- **Keys and logs:** a person's own AI key stays in their browser and is never stored or logged. Diagnostics hold no message content.
+- **Security:** httpOnly session cookies, origin (CSRF) checks, rate limits, a nonce-based Content Security Policy, and join tokens that only current members can get.
+- **AI providers:** AI features send text to the AI provider only when someone uses them.
+
+These choices follow data-protection principles: data minimisation, purpose limitation, storage limits and the right to erasure. InTune is a hackathon project and holds no compliance certification.
+
 ## Why AI is essential
 
 The hard part of this problem is **meaning**. Rules can't tell that "maybe bring something small?" is a request, or that "leave 8 maybe" is a time and a condition. Rules can't turn eleven scattered messages and four people's needs into one plan, or explain a spoken sentence while the call is happening. That kind of interpretation requires a language model.

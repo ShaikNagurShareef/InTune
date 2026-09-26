@@ -6,6 +6,24 @@
 
 InTune is a private communication community for adults who choose communication support, and the people they talk with. You can express a message by typing, tapping phrases, recording up to 30 seconds of audio, or recording a 15-second video. Gemini helps turn it into words and asks one question when something is unclear. Nothing is sent until you approve the exact text and audience. Recipients can open a private "Make clearer" version of any message and reply the same way.
 
+## Demo video (5:48)
+
+[![Watch the InTune demo video](media/intune-thumbnail.jpg)](https://github.com/ShaikNagurShareef/InTune/raw/main/media/intune-demo.mp4)
+
+**[▶ Watch the demo (MP4, 1080p, captions burned in)](https://github.com/ShaikNagurShareef/InTune/raw/main/media/intune-demo.mp4)**. Also in the repo: captions ([SRT](media/intune-demo.srt), [VTT](media/intune-demo.vtt)) and [YouTube title, description and chapters](media/YOUTUBE.md).
+
+It covers:
+- why we built it and the research behind it;
+- translation in both directions, with exact approval;
+- personal phrases;
+- joining a circle safely;
+- Plan it together;
+- live calls with an AI interpreter;
+- how InTune differs from a chat app with an AI assistant;
+- privacy and data protection.
+
+Every AI result in the video is live. It was recorded automatically from the deployed app with `npm run video` (see `video/` and `.claude/skills/intune-demo-video`).
+
 **For judges:** [SUBMISSION.md](SUBMISSION.md) (who it's for, how it strengthens connection, why AI is essential) · [DEMO_VIDEO.md](DEMO_VIDEO.md) (2:45 demo script).
 
 Built by **Coding Claws** (Nagur Shareef Shaik, Sahith Reddy Thummala, Pranav Nagothu, Geethanjali Nagaboina) for HackGT 13 (Meta challenge: *Bringing People Closer Together with AI*) from `InTune_Project_Requirements.docx`, using the [ECC](https://github.com/affaan-m/ECC) Claude Code harness.

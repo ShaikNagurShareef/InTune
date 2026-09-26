@@ -285,7 +285,7 @@ export const SCENES: Scene[] = [
           ),
       },
       {
-        say: "Maya will read: “I am overwhelmed and need to stop for now.” Leo approves, and it’s sent.",
+        say: "Maya will read that he’s overwhelmed and needs to stop for now. Leo approves, and it’s sent.",
         run: async ({ d, page }) => {
           await d.point(page.getByText("They’ll see exactly this"), 1200);
           await approveAndSend(d, page);
@@ -529,19 +529,56 @@ export const SCENES: Scene[] = [
     ],
   },
   {
+    id: "different",
+    chapter: "How InTune is different",
+    kind: "card",
+    card: "different",
+    beats: [
+      {
+        say: "So why not just use WhatsApp with Meta AI? It’s great for everyday chat, and its assistant can help you write. InTune also interprets the other way, so you understand what others mean.",
+        run: ({ card }) => card(1),
+      },
+      {
+        say: "A person always approves the exact words and who sees them. The AI never sends on anyone’s behalf, and a lost “not”, time or name is flagged.",
+        run: ({ card }) => card(2),
+      },
+      {
+        say: "And it’s built around each person: their own phrases, how they like to be spoken to, and plans and calls that fit everyone’s needs.",
+        run: ({ card }) => card(3),
+      },
+    ],
+  },
+  {
     id: "trust",
     chapter: "Trust by design",
     kind: "card",
     card: "trust",
     beats: [
       {
-        say: "Throughout, AI helps, and people decide. It never sends for you, never quietly drops a fact, and never guesses anyone’s feelings.",
+        say: "Throughout, AI helps, and people decide. It never quietly drops a fact, and it never guesses anyone’s feelings.",
         run: ({ card }) => card(1),
       },
       {
         say: "And if the AI is down, everyone can still talk: messages, phrases, calls, blocking and reporting all work without it.",
         run: ({ card }) => card(2),
       },
+    ],
+  },
+  {
+    id: "privacy",
+    chapter: "Privacy and data protection",
+    kind: "card",
+    card: "privacy",
+    beats: [
+      {
+        say: "Privacy is built in, not bolted on. Circles are invitation-only, reading help is private, and calls are never recorded.",
+        run: ({ card }) => card(1),
+      },
+      {
+        say: "Voice and video clips are deleted once they’re turned into words, InTune never asks for a diagnosis, and anyone can delete their account at any time.",
+        run: ({ card }) => card(2),
+      },
+      { say: "It’s designed around data-protection principles, like data minimisation and the right to erasure.", run: ({ card }) => card(3) },
     ],
   },
   {

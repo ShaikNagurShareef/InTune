@@ -1,0 +1,475 @@
+1
+00:00:00,000 --> 00:00:04,747
+This is InTune: an AI interpreter between
+people who communicate differently.
+
+2
+00:00:04,947 --> 00:00:06,884
+Say it your way. Be understood.
+
+3
+00:00:06,964 --> 00:00:08,311
+And plan together.
+
+4
+00:00:08,533 --> 00:00:11,530
+We’re Coding Claws, at HackGT 13.
+
+5
+00:00:11,733 --> 00:00:16,673
+Nagur Shareef Shaik, Sahith Reddy
+Thummala, Pranav Nagothu, and Geethanjali
+
+6
+00:00:16,753 --> 00:00:17,753
+Nagaboina.
+
+7
+00:00:17,833 --> 00:00:19,751
+This project started with a friend.
+
+8
+00:00:19,831 --> 00:00:23,312
+I grew up with a close friend who found
+conversations hard.
+
+9
+00:00:23,512 --> 00:00:27,954
+In groups, he struggled to keep up, and I
+often watched him get lost in the
+
+10
+00:00:28,034 --> 00:00:29,034
+conversation.
+
+11
+00:00:29,219 --> 00:00:31,981
+I always wished I could build something to
+help him.
+
+12
+00:00:32,182 --> 00:00:34,065
+Today, AI makes that possible.
+
+13
+00:00:34,145 --> 00:00:39,384
+So I built InTune, so that nobody has to
+feel lost in a group, and no friend has to
+
+14
+00:00:39,464 --> 00:00:40,691
+watch it happen.
+
+15
+00:00:40,900 --> 00:00:45,173
+He wasn’t alone. Autistic adults are far
+more likely to feel lonely, and it’s
+
+16
+00:00:45,253 --> 00:00:47,580
+rarely for lack of wanting to connect.
+
+17
+00:00:47,781 --> 00:00:52,638
+Research shows where it breaks: when
+autistic and non-autistic people pass on a
+
+18
+00:00:52,718 --> 00:00:55,584
+story, details get lost, and rapport
+drops.
+
+19
+00:00:55,787 --> 00:00:59,959
+It’s called the double empathy problem,
+because the gap runs both ways.
+
+20
+00:01:00,166 --> 00:01:03,425
+So InTune doesn’t ask anyone to change how
+they talk.
+
+21
+00:01:03,626 --> 00:01:08,922
+Instead, AI interprets in both directions,
+inside small, private circles.
+
+22
+00:01:09,133 --> 00:01:13,960
+Meet Maya. These are her chats: circles of
+friends and family, and one-to-one
+
+23
+00:01:14,040 --> 00:01:15,134
+conversations.
+
+24
+00:01:15,336 --> 00:01:20,807
+She can share a status, like “replies may
+be slow”, so nobody has to explain a quiet
+
+25
+00:01:20,887 --> 00:01:21,485
+day.
+
+26
+00:01:21,565 --> 00:01:26,213
+And messages carry tone tags, like “just
+asking” or “no rush”, so meaning isn’t
+
+27
+00:01:26,293 --> 00:01:27,566
+left to guesswork.
+
+28
+00:01:27,800 --> 00:01:32,021
+Here’s a message from Maya’s sister: “It’d
+be nice if you could maybe bring something
+
+29
+00:01:32,101 --> 00:01:32,772
+small?”
+
+30
+00:01:32,852 --> 00:01:35,529
+Is that a question? Does she need to
+reply?
+
+31
+00:01:35,609 --> 00:01:40,395
+Maya has translation switched on, so
+InTune explains it right underneath.
+
+32
+00:01:40,598 --> 00:01:44,941
+In plain words, it shows what’s being
+asked, that a reply is expected, and
+
+33
+00:01:45,021 --> 00:01:46,468
+what’s still unclear.
+
+34
+00:01:46,668 --> 00:01:50,319
+Only Maya sees this, and her sister’s
+words never change.
+
+35
+00:01:50,533 --> 00:01:55,518
+Now the other direction. Leo is autistic
+too, and when talking is hard, he writes
+
+36
+00:01:55,598 --> 00:01:56,613
+in shorthand.
+
+37
+00:01:56,814 --> 00:02:01,431
+He taps Translate, and InTune turns it
+into clear words that keep his meaning.
+
+38
+00:02:01,631 --> 00:02:05,229
+Leo sees exactly what his friends will
+read, and who will read it.
+
+39
+00:02:05,430 --> 00:02:08,245
+He adds a tone, “not upset”, and approves
+it.
+
+40
+00:02:08,325 --> 00:02:11,118
+The AI can never send anything by itself.
+
+41
+00:02:11,318 --> 00:02:15,699
+It’s labelled as AI-assisted and approved
+by Leo, and a built-in check flags any
+
+42
+00:02:15,779 --> 00:02:18,077
+“not”, time or name that goes missing.
+
+43
+00:02:18,300 --> 00:02:20,873
+InTune also learns each person’s own
+words.
+
+44
+00:02:20,953 --> 00:02:24,118
+When talking gets too much, Leo says “red
+light”.
+
+45
+00:02:24,319 --> 00:02:28,422
+He saved what that means in his
+phrasebook, so InTune uses his meaning,
+
+46
+00:02:28,502 --> 00:02:29,502
+not a guess.
+
+47
+00:02:29,608 --> 00:02:33,105
+Maya will read that he’s overwhelmed and
+needs to stop for now.
+
+48
+00:02:33,185 --> 00:02:34,956
+Leo approves, and it’s sent.
+
+49
+00:02:35,166 --> 00:02:39,264
+On the other side, Maya understands
+straight away, and she can see Leo
+
+50
+00:02:39,344 --> 00:02:41,141
+approved those exact words.
+
+51
+00:02:41,342 --> 00:02:43,039
+She replies in her own words.
+
+52
+00:02:43,119 --> 00:02:45,698
+Messages like this never need AI at all.
+
+53
+00:02:45,900 --> 00:02:50,038
+People can share how they like to be
+spoken to, on a “How to talk with me” card
+
+54
+00:02:50,118 --> 00:02:51,744
+that their circles can see.
+
+55
+00:02:51,946 --> 00:02:55,951
+They keep a phrasebook of their own
+expressions, like “loud box”, meaning
+
+56
+00:02:56,031 --> 00:02:57,451
+“it’s too noisy here”.
+
+57
+00:02:57,652 --> 00:03:00,858
+And they can choose calm colours that are
+easy on the senses.
+
+58
+00:03:02,000 --> 00:03:03,922
+Circles stay small and private.
+
+59
+00:03:04,002 --> 00:03:07,531
+People join only by invitation, right
+inside the app.
+
+60
+00:03:07,733 --> 00:03:12,224
+Before joining, you see exactly who will
+read your posts, so there are no
+
+61
+00:03:12,304 --> 00:03:13,255
+surprises.
+
+62
+00:03:13,335 --> 00:03:15,052
+One tap, and you’re in.
+
+63
+00:03:15,266 --> 00:03:17,416
+Group chats are where people get lost.
+
+64
+00:03:17,496 --> 00:03:20,562
+Here, Maya’s friends are trying to plan a
+weekend.
+
+65
+00:03:20,763 --> 00:03:23,163
+Sunday, not Saturday. Somewhere quiet.
+
+66
+00:03:23,243 --> 00:03:27,653
+Mornings are better. And Jordan needs an
+exact start and end time.
+
+67
+00:03:27,854 --> 00:03:29,624
+Priya taps “Plan it together”.
+
+68
+00:03:31,192 --> 00:03:35,456
+InTune reads the chat, and what each
+person shared about how they communicate,
+
+69
+00:03:35,536 --> 00:03:38,160
+and drafts one plan that everyone can
+enjoy.
+
+70
+00:03:38,360 --> 00:03:42,650
+It shows how the plan works for each
+person, like a quiet place for Maya and a
+
+71
+00:03:42,730 --> 00:03:44,153
+morning start for Leo.
+
+72
+00:03:44,354 --> 00:03:47,874
+Anything still open becomes a simple,
+direct question.
+
+73
+00:03:48,074 --> 00:03:51,672
+Priya checks the exact text, and posts it
+to the group.
+
+74
+00:03:52,233 --> 00:03:57,094
+Calls can be the hardest part, so InTune
+brings a calm, live interpreter into the
+
+75
+00:03:57,174 --> 00:03:57,816
+call.
+
+76
+00:03:57,896 --> 00:04:02,394
+Leo joins. The screen stays steady:
+nothing jumps around, and a soft ring
+
+77
+00:04:02,474 --> 00:04:03,923
+shows who’s talking.
+
+78
+00:04:04,124 --> 00:04:08,988
+When Leo speaks, everyone gets captions,
+and Maya’s private interpreter explains
+
+79
+00:04:09,068 --> 00:04:10,804
+each line in plain words.
+
+80
+00:04:11,005 --> 00:04:15,883
+If Leo needs a moment, one tap sends a
+signal, without interrupting anyone.
+
+81
+00:04:16,085 --> 00:04:18,857
+And when speaking is hard, he can type
+instead.
+
+82
+00:04:18,937 --> 00:04:24,019
+InTune suggests clear words, he approves
+them, and everyone hears them read aloud.
+
+83
+00:04:24,220 --> 00:04:26,851
+When the call ends, nothing from it is
+kept.
+
+84
+00:04:29,400 --> 00:04:31,864
+So why not just use WhatsApp with Meta AI?
+
+85
+00:04:31,944 --> 00:04:35,887
+It’s great for everyday chat, and its
+assistant can help you write.
+
+86
+00:04:35,967 --> 00:04:40,495
+InTune also interprets the other way, so
+you understand what others mean.
+
+87
+00:04:40,704 --> 00:04:44,167
+A person always approves the exact words
+and who sees them.
+
+88
+00:04:44,247 --> 00:04:49,239
+The AI never sends on anyone’s behalf, and
+a lost “not”, time or name is flagged.
+
+89
+00:04:49,443 --> 00:04:53,899
+And it’s built around each person: their
+own phrases, how they like to be spoken
+
+90
+00:04:53,979 --> 00:04:56,985
+to, and plans and calls that fit
+everyone’s needs.
+
+91
+00:04:57,200 --> 00:04:59,826
+Throughout, AI helps, and people decide.
+
+92
+00:04:59,906 --> 00:05:04,742
+It never quietly drops a fact, and it
+never guesses anyone’s feelings.
+
+93
+00:05:04,945 --> 00:05:10,175
+And if the AI is down, everyone can still
+talk: messages, phrases, calls, blocking
+
+94
+00:05:10,255 --> 00:05:12,644
+and reporting all work without it.
+
+95
+00:05:12,866 --> 00:05:15,090
+Privacy is built in, not bolted on.
+
+96
+00:05:15,170 --> 00:05:20,696
+Circles are invitation-only, reading help
+is private, and calls are never recorded.
+
+97
+00:05:20,898 --> 00:05:25,331
+Voice and video clips are deleted once
+they’re turned into words, InTune never
+
+98
+00:05:25,411 --> 00:05:29,616
+asks for a diagnosis, and anyone can
+delete their account at any time.
+
+99
+00:05:29,817 --> 00:05:34,045
+It’s designed around data-protection
+principles, like data minimisation and the
+
+100
+00:05:34,125 --> 00:05:35,244
+right to erasure.
+
+101
+00:05:35,466 --> 00:05:40,109
+InTune brings people closer, without
+asking anyone to become someone else.
+
+102
+00:05:40,310 --> 00:05:44,901
+It’s live today. Try it with the demo
+accounts, and read the code on GitHub.
+
+103
+00:05:45,102 --> 00:05:48,335
+From all of us at Coding Claws, thank you
+for watching.

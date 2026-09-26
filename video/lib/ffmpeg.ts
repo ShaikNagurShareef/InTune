@@ -1,9 +1,16 @@
 import { spawn } from "node:child_process";
 
-/** Runs a command, rejecting with the tail of stderr on failure. */
-export function run(cmd: string, args: string[]): Promise<string> {
+/** Runs a command, rejecting with the tail of stderr on failure (or when it runs past `timeoutMs`). */
+export function run(cmd: string, args: string[], timeoutMs = 0): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const timer = timeoutMs
+      ? setTimeout(() => {
+          child.kill("SIGKILL");
+          reject(new Error(`${cmd} timed out after ${timeoutMs / 1000} s`));
+        }, timeoutMs)
+      : null;
+    child.on("close", () => timer && clearTimeout(timer));
     let out = "";
     let err = "";
     child.stdout.on("data", (d: Buffer) => (out += d.toString()));

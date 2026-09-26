@@ -47,6 +47,7 @@ export const hasApiKey = (): boolean => Boolean(apiKey());
  */
 export const MAC_VOICE = process.env.MAC_VOICE ?? "Samantha";
 const MAC_RATE = 172;
+const SAY_TIMEOUT_MS = 30_000;
 export type Provider = "elevenlabs" | "mac";
 export function provider(): Provider {
   const forced = process.env.NARRATION;
@@ -106,7 +107,17 @@ function estimate(text: string): Spoken {
 /** The Mac's built-in voice (no account needed). Word timings are spread by length. */
 async function synthesizeMac(text: string, base: string): Promise<Spoken> {
   const aiff = `${base}.aiff`;
-  await run("say", ["-v", MAC_VOICE, "-r", String(MAC_RATE), "-o", aiff, text]);
+  // `say` occasionally writes its file and then never exits; time it out and retry.
+  for (let attempt = 1; ; attempt++) {
+    rmSync(aiff, { force: true });
+    try {
+      await run("say", ["-v", MAC_VOICE, "-r", String(MAC_RATE), "-o", aiff, text], SAY_TIMEOUT_MS);
+      break;
+    } catch (err) {
+      if (attempt >= 3) throw err;
+      console.warn(`  ⚠ say: ${(err as Error).message}; retrying`);
+    }
+  }
   await ffmpeg(["-i", aiff, "-af", "silenceremove=stop_periods=-1:stop_duration=0.4:stop_threshold=-50dB", "-codec:a", "libmp3lame", "-q:a", "2", `${base}.mp3`]);
   rmSync(aiff, { force: true });
   const duration = await probeDuration(`${base}.mp3`);
