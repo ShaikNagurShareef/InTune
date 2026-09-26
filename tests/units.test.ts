@@ -26,6 +26,11 @@ describe("critical slots", () => {
     expect(diffSlots("It'd be nice if you could maybe bring something small?", "Please bring something small.").lost).toEqual([]);
     expect(diffSlots("I'll come if it's quiet", "I'll come.").lost.map((s) => s.kind)).toEqual(["condition"]);
   });
+  it("reads am/pm as a time only after a number, never the word “am” in “I am”", () => {
+    expect(diffSlots("red light", "I am overwhelmed and need to stop for now.")).toEqual({ lost: [], added: [] });
+    expect(diffSlots("leave 8pm", "I will leave at 8 pm.").lost).toEqual([]);
+    expect(diffSlots("leave 8", "I will leave at 8 am.").added.map((s) => s.value)).toEqual(["am"]);
+  });
   it("doesn't read “one” as a number when it means a thing", () => {
     expect(diffSlots("let's not do the long one", "let's not do the long game").lost).toEqual([]);
     expect(diffSlots("bring one chair", "bring a chair").lost.map((s) => s.value)).toEqual(["1"]);

@@ -28,8 +28,10 @@ const TIME_WORDS =
   "today|tonight|tomorrow|yesterday|morning|afternoon|evening|noon|midnight|weekend|" +
   "monday|tuesday|wednesday|thursday|friday|saturday|sunday|" +
   "january|february|march|april|june|july|august|september|october|november|december|" +
-  "am|pm|o'clock|next week|last week|this week";
+  "o'clock|next week|last week|this week";
 const TIME = new RegExp(`\\b(${TIME_WORDS})\\b`, "gi");
+/** "am"/"pm" only as a clock marker right after a number ("8 pm", "8pm", "8:30 a.m."), never "I am". */
+const MERIDIEM = /(?<=\d\s?)(a\.?m\.?|p\.?m\.?)(?![a-z])/gi;
 
 const CONDITION = /\b(if|unless|only if|as long as|provided|in case|otherwise)\b/gi;
 /** Polite softeners ("if you could…", "if that's OK") are requests, not conditions. */
@@ -80,7 +82,8 @@ export function extractSlots(text: string): Slot[] {
   const slots: Slot[] = [];
   if (matches(text, NEGATION).length) slots.push({ kind: "negation", value: "negation" });
   for (const n of new Set(numbers(text))) slots.push({ kind: "number", value: n });
-  for (const t of new Set(matches(expandAbbreviations(text), TIME))) slots.push({ kind: "time", value: t });
+  const meridiems = matches(text, MERIDIEM).map((m) => m.replace(/\./g, ""));
+  for (const t of new Set([...matches(expandAbbreviations(text), TIME), ...meridiems])) slots.push({ kind: "time", value: t });
   if (matches(text.replace(POLITE_IF, " "), CONDITION).length) slots.push({ kind: "condition", value: "condition" });
   for (const n of new Set(extractNames(text))) slots.push({ kind: "name", value: n });
   return slots;
