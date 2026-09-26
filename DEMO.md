@@ -23,6 +23,7 @@ Password for all: `InTune-demo-2026`. Demo accounts can’t be deleted; re-run `
 | Conversation | Type | What it shows |
 | --- | --- | --- |
 | **Board Game Night 🎲** (Jordan, Maya, Leo) | Autistic ↔ autistic | Literal plan (time, place, end), sensory request (“lights dim?”), “leaving early is always OK”, tone tags, Leo’s *green light* |
+| **Weekend Hangout 🌿** (Priya, Maya, Leo, Jordan) | Mixed friends, scattered planning | “We should hang out!” · Sunday not Saturday · somewhere quiet · morning, fewer people · “I need a start and end time” · lifts and games offered → the chat for **Plan it together** |
 | **Chen Family 🏡** (Priya, Maya, Grace) | Autistic ↔ non-autistic | Mom’s vague “we should probably do something… maybe?” → Maya: “Can you say that more directly?” → Priya rewrites with a date and time and adds *no reply needed* |
 | **Studio Team 💼** (Sam, Leo, Ava) | Autistic ↔ coworkers | “ready-ish by Thursday?” → Leo asks *full deck? what time?* → clear deadline |
 | Maya ↔ Leo | Direct, autistic ↔ autistic | *red light* → “You don’t need to reply. I’m here later.” (tagged *no reply needed · not upset*) |
@@ -31,7 +32,7 @@ Password for all: `InTune-demo-2026`. Demo accounts can’t be deleted; re-run `
 
 Seeded messages are typed text and are **never labelled AI-assisted** — AI features are shown live.
 
-## Walkthrough (about four minutes)
+## Walkthrough (about four and a half minutes)
 
 1. **(0:00) Maya’s Chats.** Sign in as Maya. Point out the status (“replies may be slow”), unread badges, and Leo’s 🔋 status on his avatar.
 2. **(0:20) Autistic ↔ autistic.** Open *Board Game Night*: exact plan, dim lights, tone chips like *just asking · no rush*. Open **ⓘ Details** → Leo’s *How to talk with them* card.
@@ -39,8 +40,9 @@ Seeded messages are typed text and are **never labelled AI-assisted** — AI fea
 4. **(1:30) Replying safely.** Type “yes bring juice”, tap **✨ → Keep my wording**, add tone *not upset*, review the **exact bubble** they will see, then **Approve and send**. If a detail is missing, InTune asks one question instead of guessing.
 5. **(2:10) The other side.** In a second browser, **Try as Priya**: the reply arrives with Maya’s tone tag; Priya’s own messages show how family members learn to add *no reply needed*.
 6. **(2:35) Invitations.** **Try as Demo Guest** → **Requests (1)**: see who’s in *Board Game Night* before joining.
-7. **(2:50) Live call.** As Maya, open *Board Game Night* and press **📹**. The pre-join screen shows the help options. On the second computer, Leo sees **Call in progress · Join**. As Leo, tap **Signal → Please slow down**: it appears on Leo's tile on Maya's screen. Then, as Leo, tap **Say it → "need break back 5" → ✨ Make it clear → Say this**: Maya sees the line and hears it read aloud. With a Gemini key, speak a sentence and Leo's **Captions** panel shows the ✨ interpreter's plain-words version. Captions need Chrome, Edge or Safari, and a microphone.
-8. **(3:30) Close.** Nothing is sent without approval of exact words, tone and audience; no diagnosis; your key stays in your browser.
+7. **(2:40) Plan it together.** Sign in as Priya and open *Weekend Hangout 🌿*: the chat is scattered on purpose. Tap **📅 Plan it together** → **Draft a plan**. Point out **So it works for everyone** (a quiet place for Maya, a morning start for Leo) and **Still to decide** (exact times for Jordan). Then **Review and post** → **Approve and post**.
+8. **(3:10) Live call.** As Maya, open *Board Game Night* and press **📹**. The pre-join screen shows the help options. On the second computer, Leo sees **Call in progress · Join**. As Leo, tap **Signal → Please slow down**: it appears on Leo's tile on Maya's screen. Then, as Leo, tap **Say it → "need break back 5" → ✨ Make it clear → Say this**: Maya sees the line and hears it read aloud. With a Gemini key, speak a sentence and Leo's **Captions** panel shows the ✨ interpreter's plain-words version. Captions need Chrome, Edge or Safari, and a microphone.
+9. **(3:50) Close.** Nothing is sent without approval of exact words, tone and audience; no diagnosis; your key stays in your browser.
 
 ## Resetting
 

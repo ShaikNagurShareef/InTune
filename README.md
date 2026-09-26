@@ -6,6 +6,8 @@
 
 InTune is a private communication community for adults who choose communication support, and the people they talk with. You can express a message by typing, tapping phrases, recording up to 30 seconds of audio, or recording a 15-second video. Gemini helps turn it into words and asks one question when something is unclear. Nothing is sent until you approve the exact text and audience. Recipients can open a private "Make clearer" version of any message and reply the same way.
 
+**For judges:** [SUBMISSION.md](SUBMISSION.md) (who it's for, how it strengthens connection, why AI is essential) · [DEMO_VIDEO.md](DEMO_VIDEO.md) (2:45 demo script).
+
 Built for HackGT 13 (Meta challenge: *Bringing People Closer Together with AI*) from `InTune_Project_Requirements.docx`, using the [ECC](https://github.com/affaan-m/ECC) Claude Code harness.
 
 ## Try it
@@ -18,6 +20,16 @@ Or start fresh:
 2. Invite someone with a private, single-use link (expires in 24 hours).
 3. Optional: open **Gemini key** and paste your own [Gemini API key](https://aistudio.google.com/apikey). Without a key, typing, phrases, sending, reading, listening, blocking and reporting all still work.
 4. Write something like *"want come dinner friday loud outside?"* and press **Help me word it**.
+
+## Plan it together
+
+In any circle, **Plan it together** reads the recent chat plus what each member shared in *How to talk with me*. It drafts one plan everyone can enjoy:
+- when, where and what;
+- who brings what;
+- how the plan meets each person's stated needs (for example a quiet place, a morning start, or exact start and end times);
+- up to three direct yes/no questions for anything still open.
+
+Only real members can appear in the plan, and its layout is always the same. The organiser sees the plan privately first, then approves the exact text before it's posted (`src/lib/services/plan.ts`).
 
 ## Live calls with an AI interpreter
 
@@ -45,6 +57,7 @@ Why LiveKit: we compared it with Daily, Agora, 100ms and Twilio Video. It's open
 | Your key stays yours | BYOK: stored only in your browser; sent per request; never persisted, logged or checkpointed (tested) |
 | Recordings stay private | Private Blob store, verified by signature and size, erased after transcription or within 24 h |
 | Unrelated users learn nothing | Every route checks session + membership/ownership and returns the same 404 |
+| A plan is only a suggestion until it's approved | Plans are AI-assisted drafts bound to the organiser's exact approval, like any message (`src/lib/services/plan.ts`) |
 | Calls stay in the circle | Join tokens are issued per call to current members only (blocks respected), scoped to one room, short-lived; nothing from a call is recorded |
 
 ## Architecture
