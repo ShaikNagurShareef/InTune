@@ -32,6 +32,17 @@ const TIME_WORDS =
 const TIME = new RegExp(`\\b(${TIME_WORDS})\\b`, "gi");
 
 const CONDITION = /\b(if|unless|only if|as long as|provided|in case|otherwise)\b/gi;
+/** Polite softeners ("if you could…", "if that's OK") are requests, not conditions. */
+const POLITE_IF = /\bif (?:you (?:could|can|would|don't mind|do not mind|want|like|have time)|that'?s (?:ok|okay|alright|fine)|that is (?:ok|okay|fine)|possible)\b/gi;
+
+/** Short day and month names count as the same time as the full name ("sat" = "saturday"). */
+const ABBREVIATIONS: Record<string, string> = {
+  mon: "monday", tue: "tuesday", tues: "tuesday", wed: "wednesday", thu: "thursday", thur: "thursday", thurs: "thursday",
+  fri: "friday", sat: "saturday", jan: "january", feb: "february", aug: "august", sept: "september", oct: "october",
+  nov: "november", dec: "december", tmrw: "tomorrow", tmr: "tomorrow", tonite: "tonight",
+};
+const ABBREVIATION = new RegExp(`\\b(${Object.keys(ABBREVIATIONS).join("|")})\\.?(?=\\s|$|[,;!?])`, "gi");
+const expandAbbreviations = (text: string): string => text.replace(ABBREVIATION, (m) => ABBREVIATIONS[m.replace(".", "").toLowerCase()] ?? m);
 
 const PRONOUNS = new Set(["i'm", "i'll", "i've", "i'd", "ok", "okay"]);
 
@@ -69,8 +80,8 @@ export function extractSlots(text: string): Slot[] {
   const slots: Slot[] = [];
   if (matches(text, NEGATION).length) slots.push({ kind: "negation", value: "negation" });
   for (const n of new Set(numbers(text))) slots.push({ kind: "number", value: n });
-  for (const t of new Set(matches(text, TIME))) slots.push({ kind: "time", value: t });
-  if (matches(text, CONDITION).length) slots.push({ kind: "condition", value: "condition" });
+  for (const t of new Set(matches(expandAbbreviations(text), TIME))) slots.push({ kind: "time", value: t });
+  if (matches(text.replace(POLITE_IF, " "), CONDITION).length) slots.push({ kind: "condition", value: "condition" });
   for (const n of new Set(extractNames(text))) slots.push({ kind: "name", value: n });
   return slots;
 }

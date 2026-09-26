@@ -21,6 +21,11 @@ describe("critical slots", () => {
     expect(diffSlots("start at seven", "start at 7:00").lost).toEqual([]);
     expect(diffSlots("start at 7", "start at 7:30").lost.map((s) => s.value)).toEqual(["7"]);
   });
+  it("treats short day names as the day, and polite “if you could” as a request, not a condition", () => {
+    expect(diffSlots("sat ok. leave 8 maybe", "Saturday is OK. I may leave at 8.")).toEqual({ lost: [], added: [] });
+    expect(diffSlots("It'd be nice if you could maybe bring something small?", "Please bring something small.").lost).toEqual([]);
+    expect(diffSlots("I'll come if it's quiet", "I'll come.").lost.map((s) => s.kind)).toEqual(["condition"]);
+  });
   it("doesn't read “one” as a number when it means a thing", () => {
     expect(diffSlots("let's not do the long one", "let's not do the long game").lost).toEqual([]);
     expect(diffSlots("bring one chair", "bring a chair").lost.map((s) => s.value)).toEqual(["1"]);
