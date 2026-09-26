@@ -176,7 +176,7 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
             <Pencil aria-hidden="true" className="h-4 w-4" /> {isEditing ? "Done editing" : "Edit words"}
           </Button>
           {isDirty && <Button className="text-sm" onClick={() => void saveEdit()}>Save edit</Button>}
-          {draft.aiAssisted && original && original !== text && (
+          {variant === "message" && draft.aiAssisted && original && original !== text && (
             <Button tone="ghost" className="text-sm" onClick={useOriginal}>
               <Undo2 aria-hidden="true" className="h-4 w-4" /> Send my own words instead
             </Button>
