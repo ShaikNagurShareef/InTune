@@ -199,6 +199,9 @@ async function runSegment(
   try {
     await graph.invoke(payload, config);
   } catch (err) {
+    if (!(err instanceof AppError)) {
+      console.error(`[assist] unexpected ${err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 300) : "error"}`);
+    }
     const appErr =
       err instanceof AppError
         ? err

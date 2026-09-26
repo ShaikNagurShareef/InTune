@@ -2,6 +2,7 @@ import { ApiError, GoogleGenAI, type Part } from "@google/genai";
 import { z, type ZodType } from "zod";
 import { AppError } from "@/lib/errors";
 import { e2eStubEnabled, e2eStubTransport } from "./e2e-stub";
+import { createHash } from "node:crypto";
 import { ATTEMPT_TIMEOUT_MS, DEFAULT_MODEL, MAX_OUTPUT_TOKENS, MAX_TRANSIENT_RETRIES } from "./config";
 
 export const KEY_HEADER = "x-gemini-key";
@@ -19,6 +20,8 @@ export interface GeminiCredentials {
   readonly apiKey: string;
   readonly model: string;
   readonly source?: "user" | "server";
+  /** True when the person picked a model in Settings; otherwise the best available model is chosen. */
+  readonly explicitModel?: boolean;
 }
 
 /** The operator's shared key (Vercel env GEMINI_API_KEY), used only when a person hasn't brought their own. */
@@ -28,9 +31,10 @@ export function serverKeyAvailable(): boolean {
 
 export function credentialsFromRequest(req: Request): GeminiCredentials {
   const requested = req.headers.get(MODEL_HEADER)?.trim();
-  const model = requested && MODEL_PATTERN.test(requested) ? requested.replace(/^models\//, "") : DEFAULT_MODEL;
+  const explicitModel = Boolean(requested && MODEL_PATTERN.test(requested));
+  const model = explicitModel && requested ? requested.replace(/^models\//, "") : DEFAULT_MODEL;
   const userKey = req.headers.get(KEY_HEADER)?.trim() ?? "";
-  if (KEY_PATTERN.test(userKey)) return { apiKey: userKey, model, source: "user" };
+  if (KEY_PATTERN.test(userKey)) return { apiKey: userKey, model, source: "user", explicitModel };
   const serverKey = process.env.GEMINI_API_KEY?.trim() ?? "";
   if (KEY_PATTERN.test(serverKey)) return { apiKey: serverKey, model: DEFAULT_MODEL, source: "server" };
   // Playwright only: the scripted stand-in acts as the shared key (never enabled in production).
@@ -50,9 +54,43 @@ export interface GenerateRequest {
   signal?: AbortSignal;
 }
 
-function thinkingConfig(model: string) {
-  if (model.startsWith("gemini-2.5-flash")) return { thinkingBudget: 0 };
-  return undefined;
+/** 2.5 Flash can switch thinking off; newer models think by default, so give them room beyond the visible answer. */
+function generationLimits(model: string) {
+  if (model.startsWith("gemini-2.5-flash")) return { maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingConfig: { thinkingBudget: 0 } };
+  return { maxOutputTokens: MAX_OUTPUT_TOKENS * THINKING_HEADROOM };
+}
+
+const THINKING_HEADROOM = 5;
+const EXCLUDED_VARIANTS = /(lite|image|tts|live|audio|embedding|exp|preview|thinking|8b)/;
+
+/** Picks the newest stable Flash model this key can call (e.g. gemini-3-flash over gemini-2.5-flash). */
+export function pickModel(names: string[]): string | null {
+  const flash = names.filter((n) => n.includes("flash") && !EXCLUDED_VARIANTS.test(n));
+  const versioned = flash
+    .map((n) => ({ n, v: Number(/^gemini-(\d+(?:\.\d+)?)-flash$/.exec(n)?.[1] ?? NaN) }))
+    .filter((x) => !Number.isNaN(x.v))
+    .sort((a, b) => b.v - a.v);
+  return versioned[0]?.n ?? (flash.includes("gemini-flash-latest") ? "gemini-flash-latest" : (flash[0] ?? null));
+}
+
+const modelCache = new Map<string, Promise<string>>();
+
+/** Resolves (and caches per key, per server instance) which model to use unless the person chose one. */
+async function resolveModel(creds: GeminiCredentials): Promise<string> {
+  if (creds.explicitModel) return creds.model;
+  const cacheKey = createHash("sha256").update(creds.apiKey).digest("hex");
+  let pending = modelCache.get(cacheKey);
+  if (!pending) {
+    pending = listModels(creds.apiKey)
+      .then((names) => pickModel(names) ?? creds.model)
+      .catch(() => creds.model);
+    modelCache.set(cacheKey, pending);
+  }
+  return pending;
+}
+
+function forgetModel(creds: GeminiCredentials): void {
+  modelCache.delete(createHash("sha256").update(creds.apiKey).digest("hex"));
 }
 
 const liveTransport: GeminiTransport = {
@@ -60,20 +98,26 @@ const liveTransport: GeminiTransport = {
     const ai = new GoogleGenAI({ apiKey: creds.apiKey });
     const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
     const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
-    const res = await ai.models.generateContent({
-      model: creds.model,
-      contents: [{ role: "user", parts: req.parts }],
-      config: {
-        systemInstruction: req.system,
-        responseMimeType: "application/json",
-        responseJsonSchema: req.jsonSchema,
-        maxOutputTokens: MAX_OUTPUT_TOKENS,
-        temperature: 0.2,
-        thinkingConfig: thinkingConfig(creds.model),
-        abortSignal: signal,
-      },
-    });
-    return res.text ?? "";
+    const model = await resolveModel(creds);
+    try {
+      const res = await ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: req.parts }],
+        config: {
+          systemInstruction: req.system,
+          responseMimeType: "application/json",
+          responseJsonSchema: req.jsonSchema,
+          temperature: 0.2,
+          ...generationLimits(model),
+          abortSignal: signal,
+        },
+      });
+      return res.text ?? "";
+    } catch (err) {
+      // A retired or unavailable model: re-pick on the next attempt.
+      if (statusOf(err) === 404) forgetModel(creds);
+      throw err;
+    }
   },
 };
 
@@ -96,10 +140,19 @@ function statusOf(err: unknown): number | null {
 function isTransient(err: unknown): boolean {
   const status = statusOf(err);
   if (status === null) return err instanceof Error && err.name === "TimeoutError";
-  return status === 429 || status >= 500;
+  return status === 404 || status === 429 || status >= 500;
+}
+
+/** Content-free provider diagnostics: status and Google's error text only, with any key scrubbed. */
+function logProviderError(err: unknown): void {
+  const status = statusOf(err);
+  const raw = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  const scrubbed = raw.replace(/AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z._-]{20,}/g, "<key>").slice(0, 300);
+  console.warn(`[gemini] provider error status=${status ?? "none"} ${scrubbed}`);
 }
 
 function toAppError(err: unknown): AppError {
+  logProviderError(err);
   const status = statusOf(err);
   if (status === 400 || status === 401 || status === 403) {
     return new AppError("ai_key_missing", "Gemini did not accept this API key or model. Check Settings.");

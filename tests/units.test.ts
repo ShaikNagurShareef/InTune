@@ -93,3 +93,13 @@ describe("shared server key", () => {
     }
   });
 });
+
+describe("model selection", () => {
+  it("picks the newest stable Flash model the key can use", async () => {
+    const { pickModel } = await import("@/lib/gemini/client");
+    expect(pickModel(["gemini-2.5-flash", "gemini-3-flash", "gemini-3-flash-lite", "gemini-3-flash-preview", "gemini-2.0-flash"])).toBe("gemini-3-flash");
+    expect(pickModel(["gemini-2.5-flash", "gemini-2.5-pro"])).toBe("gemini-2.5-flash");
+    expect(pickModel(["gemini-flash-latest", "gemini-2.5-pro"])).toBe("gemini-flash-latest");
+    expect(pickModel(["gemini-2.5-pro"])).toBeNull();
+  });
+});
