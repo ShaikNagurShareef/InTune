@@ -58,3 +58,14 @@ describe("hashing and validation", () => {
     expect(messageText.safeParse("Line one\nLine two").success).toBe(true);
   });
 });
+
+describe("BYOK key format", () => {
+  const req = (key: string) => new Request("http://x", { headers: { "x-gemini-key": key } });
+  it("accepts classic and dotted Gemini key formats, rejects junk", async () => {
+    const { credentialsFromRequest } = await import("@/lib/gemini/client");
+    expect(credentialsFromRequest(req("AIzaSyExampleExampleExampleExample0000")).apiKey).toBeTruthy();
+    expect(credentialsFromRequest(req("AQ.Example_example-Example.example0000000000")).apiKey).toBeTruthy();
+    expect(() => credentialsFromRequest(req("short"))).toThrow();
+    expect(() => credentialsFromRequest(req("has spaces in it but is long enough"))).toThrow();
+  });
+});

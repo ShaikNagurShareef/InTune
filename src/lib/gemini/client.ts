@@ -7,7 +7,8 @@ import { ATTEMPT_TIMEOUT_MS, DEFAULT_MODEL, MAX_OUTPUT_TOKENS, MAX_TRANSIENT_RET
 export const KEY_HEADER = "x-gemini-key";
 export const MODEL_HEADER = "x-gemini-model";
 
-const KEY_PATTERN = /^[A-Za-z0-9_-]{20,128}$/;
+// Classic "AIza…" keys and newer dotted "AQ.…" keys; header-safe characters only.
+const KEY_PATTERN = /^[A-Za-z0-9._-]{20,256}$/;
 const MODEL_PATTERN = /^(models\/)?gemini-[a-z0-9.-]{1,60}$/;
 
 /** Per-request BYOK credentials. Never persisted, logged, or placed in LangGraph config/state. */

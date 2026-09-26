@@ -111,7 +111,7 @@ export function KeySettings() {
                 type="password"
                 autoComplete="off"
                 spellCheck={false}
-                placeholder="AIza…"
+                placeholder="AIza… or AQ.…"
                 className={inputClass}
               />
             </label>
