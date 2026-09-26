@@ -3,6 +3,7 @@ import { z, type ZodType } from "zod";
 import { AppError } from "@/lib/errors";
 import { e2eStubEnabled, e2eStubTransport } from "./e2e-stub";
 import { createHash } from "node:crypto";
+import { runWithFallback, statusOf as routerStatusOf, type RouteRef } from "./router";
 import {
   DEFAULT_OPENAI_MODEL,
   OPENAI_KEY_PATTERN,
@@ -38,6 +39,8 @@ export interface GeminiCredentials {
   readonly source?: "user" | "server";
   /** True when the person picked a model in Settings; otherwise the best available model is chosen. */
   readonly explicitModel?: boolean;
+  /** Other keys of the same kind (the person's other own key, or the other shared key) for fallback. */
+  readonly alternates?: readonly { provider: AiProviderId; apiKey: string }[];
 }
 
 const serverGeminiKey = () => process.env.GEMINI_API_KEY?.trim() ?? "";
@@ -68,13 +71,23 @@ export function credentialsFromRequest(req: Request): GeminiCredentials {
   };
   const hasGemini = KEY_PATTERN.test(geminiKey);
   const hasOpenAi = OPENAI_KEY_PATTERN.test(openAiKey);
-  if (preferred === "openai" && hasOpenAi) return ownOpenAi();
-  if (preferred === "gemini" && hasGemini) return ownGemini();
+  // A person's own keys fall back to each other, never to the operator's shared key.
+  const withOther = (c: GeminiCredentials, other: { provider: AiProviderId; apiKey: string } | null): GeminiCredentials =>
+    other ? { ...c, alternates: [other] } : c;
+  if (preferred === "openai" && hasOpenAi) return withOther(ownOpenAi(), hasGemini ? { provider: "gemini", apiKey: geminiKey } : null);
+  if (preferred === "gemini" && hasGemini) return withOther(ownGemini(), hasOpenAi ? { provider: "openai", apiKey: openAiKey } : null);
   if (hasOpenAi) return ownOpenAi();
   if (hasGemini) return ownGemini();
 
-  if (KEY_PATTERN.test(serverGeminiKey())) return { provider: "gemini", apiKey: serverGeminiKey(), model: DEFAULT_MODEL, source: "server" };
-  if (OPENAI_KEY_PATTERN.test(serverOpenAiKey())) {
+  const sharedGemini = KEY_PATTERN.test(serverGeminiKey());
+  const sharedOpenAi = OPENAI_KEY_PATTERN.test(serverOpenAiKey());
+  if (sharedGemini) {
+    return withOther(
+      { provider: "gemini", apiKey: serverGeminiKey(), model: DEFAULT_MODEL, source: "server" },
+      sharedOpenAi ? { provider: "openai", apiKey: serverOpenAiKey() } : null,
+    );
+  }
+  if (sharedOpenAi) {
     return { provider: "openai", apiKey: serverOpenAiKey(), model: DEFAULT_OPENAI_MODEL, source: "server" };
   }
   // Playwright only: the scripted stand-in acts as the shared key (never enabled in production).
@@ -126,124 +139,100 @@ export function pickModel(names: string[]): string | null {
   return rankModels(names)[0] ?? null;
 }
 
-const MAX_MODEL_CANDIDATES = 3;
+const MAX_MODEL_CANDIDATES = 5;
 const modelCache = new Map<string, Promise<string[]>>();
-const cacheKeyFor = (creds: GeminiCredentials) =>
-  createHash("sha256").update(`${creds.provider ?? "gemini"}:${creds.apiKey}`).digest("hex");
+const keyHash = (provider: AiProviderId, apiKey: string) => createHash("sha256").update(`${provider}:${apiKey}`).digest("hex");
 
-/** Candidate models for this key (cached per server instance) unless the person chose one explicitly. */
-async function resolveModels(creds: GeminiCredentials): Promise<string[]> {
-  if (creds.explicitModel) return [creds.model];
-  const key = cacheKeyFor(creds);
+/** Candidate models for one key, best first (cached per server instance) unless the person chose one. */
+async function resolveModels(provider: AiProviderId, apiKey: string, fallbackModel: string, explicit?: string): Promise<string[]> {
+  if (explicit) return [explicit];
+  const key = keyHash(provider, apiKey);
   let pending = modelCache.get(key);
   if (!pending) {
-    const provider = creds.provider ?? "gemini";
-    pending = (provider === "openai" ? listOpenAiModels(creds.apiKey) : listModels(creds.apiKey))
+    pending = (provider === "openai" ? listOpenAiModels(apiKey) : listModels(apiKey))
       .then((names) => {
         const ranked = (provider === "openai" ? rankOpenAiModels(names) : rankModels(names)).slice(0, MAX_MODEL_CANDIDATES);
-        return ranked.length ? ranked : [creds.model];
+        return ranked.length ? ranked : [fallbackModel];
       })
-      .catch(() => [creds.model]);
+      .catch(() => [fallbackModel]);
     modelCache.set(key, pending);
   }
   return pending;
 }
 
-/** Errors worth trying the next model for: retired (404), out of quota (429) or overloaded (5xx). */
-const tryNextModel = (err: unknown) => {
-  const status = statusOf(err);
-  return status === 404 || status === 429 || (status !== null && status >= 500);
-};
+interface Route extends RouteRef {
+  apiKey: string;
+}
+
+const hasMedia = (parts: Part[]) => parts.some((p) => p.inlineData || p.fileData);
+
+/**
+ * Every model we may try for this request: the chosen key's models first, then the alternate key's.
+ * Recordings can only go to Gemini (OpenAI receives text; its voice path transcribes separately).
+ */
+async function routesFor(creds: GeminiCredentials, req: GenerateRequest): Promise<Route[]> {
+  const keys = [{ provider: creds.provider ?? "gemini", apiKey: creds.apiKey, primary: true }, ...(creds.alternates ?? []).map((a) => ({ ...a, primary: false }))];
+  const routes: Route[] = [];
+  for (const k of keys) {
+    if (hasMedia(req.parts) && k.provider !== "gemini") continue;
+    const fallback = k.provider === "openai" ? DEFAULT_OPENAI_MODEL : DEFAULT_MODEL;
+    const explicit = k.primary && creds.explicitModel ? creds.model : undefined;
+    const keyId = keyHash(k.provider, k.apiKey).slice(0, 12);
+    for (const model of await resolveModels(k.provider, k.apiKey, fallback, explicit)) {
+      routes.push({ provider: k.provider, model, keyId, apiKey: k.apiKey });
+    }
+  }
+  return routes;
+}
 
 /** Flattens text parts for providers that take plain text (media is transcribed separately for OpenAI). */
 function textOnly(parts: Part[]): string {
-  if (parts.some((p) => p.inlineData || p.fileData)) {
+  if (hasMedia(parts)) {
     throw new AppError("invalid_input", "This provider can't read recordings directly. Please type or record a voice message.");
   }
   return parts.map((p) => p.text ?? "").join("\n");
 }
 
-async function generateWithOpenAi(creds: GeminiCredentials, req: GenerateRequest): Promise<string> {
-  const client = openAiClient(creds.apiKey);
-  const text = textOnly(req.parts);
-  let lastError: unknown = null;
-  for (const model of await resolveModels(creds)) {
-    const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
-    const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
-    try {
-      const out = await openAiGenerate(client, model, { system: req.system, text, jsonSchema: req.jsonSchema, signal });
-      req.onModel?.(model);
-      return out;
-    } catch (err) {
-      if (req.signal?.aborted || !tryNextModel(err)) throw err;
-      logProviderError(err);
-      if (statusOf(err) === 404) modelCache.delete(cacheKeyFor(creds));
-      lastError = err;
-    }
+/** One call to one model. */
+async function callRoute(route: Route, req: GenerateRequest): Promise<string> {
+  const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
+  const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+  if (route.provider === "openai") {
+    return openAiGenerate(openAiClient(route.apiKey), route.model, { system: req.system, text: textOnly(req.parts), jsonSchema: req.jsonSchema, signal });
   }
-  throw lastError ?? new Error("No OpenAI model available");
+  const res = await new GoogleGenAI({ apiKey: route.apiKey }).models.generateContent({
+    model: route.model,
+    contents: [{ role: "user", parts: req.parts }],
+    config: {
+      systemInstruction: req.system,
+      responseMimeType: "application/json",
+      responseJsonSchema: req.jsonSchema,
+      temperature: 0.2,
+      ...generationLimits(route.model),
+      abortSignal: signal,
+    },
+  });
+  return res.text ?? "";
 }
 
-/**
- * The other shared provider, when the operator configured both: used only if every model of the first
- * provider is overloaded or out of quota, and only for text (recordings need their original provider).
- */
-function fallbackCredentials(creds: GeminiCredentials, req: GenerateRequest): GeminiCredentials | null {
-  if (creds.source !== "server" || req.parts.some((p) => p.inlineData || p.fileData)) return null;
-  if ((creds.provider ?? "gemini") === "gemini" && OPENAI_KEY_PATTERN.test(serverOpenAiKey())) {
-    return { provider: "openai", apiKey: serverOpenAiKey(), model: DEFAULT_OPENAI_MODEL, source: "server" };
-  }
-  if (creds.provider === "openai" && KEY_PATTERN.test(serverGeminiKey())) {
-    return { provider: "gemini", apiKey: serverGeminiKey(), model: DEFAULT_MODEL, source: "server" };
-  }
-  return null;
-}
-
+/** Routes each call through healthy models with automatic fallback on rate limits and overload. */
 const liveTransport: GeminiTransport = {
   async generate(creds, req) {
-    try {
-      return await generateWithProvider(creds, req);
-    } catch (err) {
-      const alternative = fallbackCredentials(creds, req);
-      if (!alternative || req.signal?.aborted || !tryNextModel(err)) throw err;
-      logProviderError(err);
-      return generateWithProvider(alternative, req);
-    }
+    const routes = await routesFor(creds, req);
+    const { value, route } = await runWithFallback(routes, (r) => callRoute(r, req), {
+      signal: req.signal,
+      onFallback: ({ from, failure }) => {
+        if (failure.kind === "retired") modelCache.delete(keyHash(from.provider, (from as Route).apiKey));
+        console.warn(
+          `[ai] fallback from ${from.provider}/${from.model}: ${failure.kind} (status ${failure.status ?? "none"}` +
+            `${failure.retryAfterMs ? `, retry after ${Math.round(failure.retryAfterMs / 1000)}s` : ""})`,
+        );
+      },
+    });
+    req.onModel?.(route.model);
+    return value;
   },
 };
-
-async function generateWithProvider(creds: GeminiCredentials, req: GenerateRequest): Promise<string> {
-  if (creds.provider === "openai") return generateWithOpenAi(creds, req);
-  const ai = new GoogleGenAI({ apiKey: creds.apiKey });
-  const candidates = await resolveModels(creds);
-  let lastError: unknown = null;
-  for (const model of candidates) {
-    const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
-    const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
-    try {
-      const res = await ai.models.generateContent({
-        model,
-        contents: [{ role: "user", parts: req.parts }],
-        config: {
-          systemInstruction: req.system,
-          responseMimeType: "application/json",
-          responseJsonSchema: req.jsonSchema,
-          temperature: 0.2,
-          ...generationLimits(model),
-          abortSignal: signal,
-        },
-      });
-      req.onModel?.(model);
-      return res.text ?? "";
-    } catch (err) {
-      if (req.signal?.aborted || !tryNextModel(err)) throw err;
-      logProviderError(err);
-      if (statusOf(err) === 404) modelCache.delete(cacheKeyFor(creds));
-      lastError = err;
-    }
-  }
-  throw lastError ?? new Error("No Gemini model available");
-}
 
 let transport: GeminiTransport | null = null;
 
@@ -259,14 +248,17 @@ export function setGeminiTransport(next: GeminiTransport | null): void {
 /** HTTP status from either SDK's error (Gemini ApiError, OpenAI APIError). */
 function statusOf(err: unknown): number | null {
   if (err instanceof ApiError) return err.status;
-  const status = (err as { status?: unknown } | null)?.status;
-  return typeof status === "number" ? status : null;
+  return routerStatusOf(err);
 }
 
+/**
+ * The router already switches models on rate limits (429). One more full pass only helps for momentary
+ * overload (5xx / timeouts), so only those are retried here.
+ */
 function isTransient(err: unknown): boolean {
   const status = statusOf(err);
   if (status === null) return err instanceof Error && err.name === "TimeoutError";
-  return status === 404 || status === 429 || status >= 500;
+  return status >= 500;
 }
 
 /** Content-free provider diagnostics: status and Google's error text only, with any key scrubbed. */

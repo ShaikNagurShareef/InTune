@@ -3,6 +3,7 @@ import { requirePageUser } from "@/lib/auth/server-session";
 import { notFound } from "next/navigation";
 import { canViewDiagnostics, diagnosticsSummary } from "@/lib/services/diagnostics";
 import { DEFAULT_MODEL, PROMPT_VERSION } from "@/lib/gemini/config";
+import { healthSnapshot } from "@/lib/gemini/router";
 import { PageTitle } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Diagnostics" };
@@ -14,6 +15,7 @@ export default async function DiagnosticsPage() {
   const user = await requirePageUser("/diagnostics");
   if (!canViewDiagnostics(user.email)) notFound();
   const d = await diagnosticsSummary();
+  const health = healthSnapshot();
   const tiles = [
     { label: "Assisted turns", value: String(d.assistLatency.n) },
     { label: "Assist p50", value: ms(d.assistLatency.p50) },
@@ -53,6 +55,19 @@ export default async function DiagnosticsPage() {
           ))}
         </tbody>
       </table>
+      <h2 className="font-display mt-10 text-2xl font-semibold">Model health (this server instance)</h2>
+      <p className="mt-1 text-sm text-ink-2">Models benched after a rate limit or overload are skipped until their cooldown ends; requests go to the next healthy model automatically.</p>
+      <ul className="mt-3 space-y-1">
+        {health.length === 0 && <li className="text-ink-2">All models healthy.</li>}
+        {health.map((h) => (
+          <li key={`${h.provider}/${h.model}`} className="flex flex-wrap gap-3 rounded-xl bg-paper-2 px-3 py-2 text-sm">
+            <strong>{h.provider}/{h.model}</strong>
+            <span>{h.kind.replace("_", " ")}</span>
+            <span className="text-ink-2">back in {h.secondsLeft}s</span>
+          </li>
+        ))}
+      </ul>
+
       <h2 className="font-display mt-10 text-2xl font-semibold">Assist outcomes</h2>
       <ul className="mt-2 flex flex-wrap gap-2">
         {Object.entries(d.outcomes).map(([k, v]) => (

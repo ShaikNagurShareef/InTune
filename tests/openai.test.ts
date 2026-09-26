@@ -69,3 +69,37 @@ describe("OpenAI provider", () => {
     expect(seen[1]).not.toHaveProperty("reasoning_effort");
   });
 });
+
+describe("fallback keys", () => {
+  const req = (h: Record<string, string>) => new Request("http://x", { headers: h });
+  it("a person's own keys back each other up, but never fall back to the shared key", () => {
+    const both = credentialsFromRequest(req({ "x-ai-provider": "gemini", "x-gemini-key": GEMINI_KEY, "x-openai-key": OPENAI_KEY }));
+    expect(both).toMatchObject({ provider: "gemini", alternates: [{ provider: "openai", apiKey: OPENAI_KEY }] });
+    const previous = process.env.OPENAI_API_KEY;
+    try {
+      process.env.OPENAI_API_KEY = "sk-sharedsharedsharedshared0000";
+      expect(credentialsFromRequest(req({ "x-gemini-key": GEMINI_KEY })).alternates).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = previous;
+    }
+  });
+
+  it("shared Gemini falls back to shared OpenAI when both are configured", () => {
+    const prev = { g: process.env.GEMINI_API_KEY, o: process.env.OPENAI_API_KEY };
+    try {
+      process.env.GEMINI_API_KEY = "AIzaSySharedSharedSharedSharedShared0";
+      process.env.OPENAI_API_KEY = "sk-sharedsharedsharedshared0000";
+      expect(credentialsFromRequest(req({}))).toMatchObject({
+        provider: "gemini",
+        source: "server",
+        alternates: [{ provider: "openai" }],
+      });
+    } finally {
+      for (const [k, v] of [["GEMINI_API_KEY", prev.g], ["OPENAI_API_KEY", prev.o]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+});
