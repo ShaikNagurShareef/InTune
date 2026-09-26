@@ -58,7 +58,7 @@ export function Requests({ invitations, onChange }: { invitations: MyInvitation[
             <button
               type="button"
               onClick={() => join(inv)}
-              className="bg-brand inline-flex min-h-11 items-center justify-center gap-2 rounded-xl font-bold text-white hover:brightness-110"
+              className="bg-brand inline-flex min-h-11 items-center justify-center gap-2 rounded-xl font-bold text-on-brand hover:brightness-110"
             >
               <Check aria-hidden="true" className="h-4 w-4" /> Join circle
             </button>

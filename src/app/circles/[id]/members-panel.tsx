@@ -173,7 +173,7 @@ export function MembersPanel({ circle, me }: { circle: CircleInfo; me: Me }) {
                 <input name="email" type="email" required autoComplete="off" placeholder="name@example.com" className="h-11 min-w-0 flex-1 bg-transparent outline-none" />
               </span>
             </label>
-            <button type="submit" className="bg-brand min-h-11 w-full rounded-xl font-bold text-white hover:brightness-110">Send invitation</button>
+            <button type="submit" className="bg-brand min-h-11 w-full rounded-xl font-bold text-on-brand hover:brightness-110">Send invitation</button>
             <p className="text-xs text-ink-2">They’ll see it in their Requests and choose to join. No search: use the email they signed up with.</p>
           </form>
 

@@ -32,6 +32,8 @@ export const preferences = pgTable("preferences", {
     .references(() => users.id, { onDelete: "cascade" }),
   inputMode: text("input_mode").notNull().default("type"),
   textSize: text("text_size").notNull().default("md"),
+  // Sensory colour theme: system (calm by day, soft dark at night), calm, soft-dark or contrast.
+  theme: text("theme").notNull().default("system"),
   sentenceLength: text("sentence_length").notNull().default("medium"),
   audioRate: real("audio_rate").notNull().default(1),
   reduceMotion: boolean("reduce_motion").notNull().default(false),

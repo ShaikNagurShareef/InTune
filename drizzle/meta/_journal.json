@@ -36,6 +36,13 @@
       "when": 1790420420022,
       "tag": "0004_auto_translate",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790421327589,
+      "tag": "0005_sensory_theme",
+      "breakpoints": true
     }
   ]
 }

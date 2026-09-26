@@ -34,7 +34,7 @@ export default async function Landing() {
             it into a clear message for your circle, and their replies back into plain words for you. Nothing is sent until you approve it.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/signup" className="bg-brand inline-flex min-h-12 items-center rounded-xl px-6 text-lg font-bold text-white shadow-[var(--shadow)] hover:brightness-110">
+            <Link href="/signup" className="bg-brand inline-flex min-h-12 items-center rounded-xl px-6 text-lg font-bold text-on-brand shadow-[var(--shadow)] hover:brightness-110">
               Create your circle
             </Link>
             <Link href="/signin" className="inline-flex min-h-12 items-center rounded-xl border border-line px-6 text-lg font-bold hover:bg-paper-2">
@@ -54,7 +54,7 @@ export default async function Landing() {
           <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
               <li key={f.title} className="rounded-3xl border border-line bg-card p-6 shadow-[var(--shadow)]">
-                <span className="bg-brand grid h-11 w-11 place-items-center rounded-2xl text-white">
+                <span className="bg-brand grid h-11 w-11 place-items-center rounded-2xl text-on-brand">
                   <f.icon aria-hidden="true" className="h-5 w-5" />
                 </span>
                 <h3 className="mt-4 text-lg font-extrabold">{f.title}</h3>

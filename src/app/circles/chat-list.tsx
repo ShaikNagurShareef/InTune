@@ -47,7 +47,7 @@ function Row({ chat, quiet, active }: { chat: ChatSummary; quiet: boolean; activ
           </span>
         </span>
         {unread && (
-          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-teal px-1.5 text-xs font-bold text-white">
+          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-teal px-1.5 text-xs font-bold text-on-brand">
             {chat.unread}
             <span className="sr-only"> unread</span>
           </span>

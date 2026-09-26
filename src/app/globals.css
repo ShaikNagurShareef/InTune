@@ -1,58 +1,157 @@
 @import "tailwindcss";
 
 /*
- * InTune design tokens — Instagram-Direct-inspired, tuned for calm.
- * Neutral white/black canvas; the brand gradient is reserved for avatars rings, your own
- * bubbles and the primary action. Semantic names: teal = accent/act, clay = danger/attention,
- * amber = uncertain/status, sage = success. (Names kept from v1 so every surface re-themes.)
+ * InTune "Calm Sage" design tokens — low-arousal, low-glare palette informed by autism design guidance
+ * ("use simple colours; avoid bright contrasting colours"). Warm paper instead of pure white, deep
+ * slate-green instead of black, one calm sage-teal accent, soft lavender reserved for AI content.
+ * Themes (preference, FR02): calm (default light) · soft-dark · contrast · system (follows the device).
+ * Semantic names: teal = primary/act, clay = danger, amber = uncertain/status, sage = success, ai = AI content.
  */
-:root {
-  --paper: #ffffff;
-  --paper-2: #f3f3f6;
-  --card: #ffffff;
-  --ink: #0f1115;
-  --ink-2: #686d78;
-  --line: #e8e8ee;
-  --teal: #5b4ce0;
+:root,
+:root[data-theme="calm"] {
+  --paper: #f6f4ef;
+  --paper-2: #ebe7de;
+  --card: #fcfbf8;
+  --ink: #26332f;
+  --ink-2: #5d6a65;
+  --line: #dfdad0;
+  --teal: #3e7b70;
   --teal-ink: #ffffff;
-  --teal-soft: #efedff;
-  --clay: #d92d5c;
-  --clay-soft: #fdecf1;
-  --amber-soft: #fff4dc;
-  --amber-ink: #7a4d00;
-  --sage: #149a52;
-  --sage-soft: #e5f6ec;
-  --bubble-theirs: #efeff4;
-  --focus: #5b4ce0;
-  --brand: linear-gradient(135deg, #4f5bd5 0%, #962fbf 55%, #d62976 100%);
-  --brand-soft: linear-gradient(135deg, rgba(79, 91, 213, 0.1), rgba(214, 41, 118, 0.1));
-  --ring: conic-gradient(from 210deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75);
-  --shadow: 0 1px 2px rgba(15, 17, 21, 0.06), 0 8px 24px -12px rgba(15, 17, 21, 0.16);
-  --shadow-lg: 0 24px 48px -16px rgba(15, 17, 21, 0.28);
+  --teal-soft: #e1eeea;
+  --on-brand: #ffffff;
+  --clay: #a8513d;
+  --clay-soft: #f4e3dc;
+  --amber-soft: #f4ead3;
+  --amber-ink: #6f5419;
+  --sage: #4a7f55;
+  --sage-soft: #e2eee3;
+  --ai: #635b9e;
+  --ai-soft: #ecebf5;
+  --bubble-mine: #3e7b70;
+  --bubble-theirs: #e9e5db;
+  --on-mine: #ffffff;
+  --on-ai: #ffffff;
+  --av-bg-s: 28%;
+  --av-bg-l: 85%;
+  --av-fg-l: 28%;
+  --focus: #2f6a60;
+  --brand: linear-gradient(135deg, #4a887c 0%, #3e7b70 100%);
+  --brand-soft: linear-gradient(135deg, rgba(62, 123, 112, 0.09), rgba(99, 91, 158, 0.08));
+  --ring: conic-gradient(from 210deg, #8fbfb4, #3e7b70, #8f89c4, #8fbfb4);
+  --shadow: 0 1px 2px rgba(38, 51, 47, 0.05), 0 8px 24px -14px rgba(38, 51, 47, 0.14);
+  --shadow-lg: 0 24px 48px -18px rgba(38, 51, 47, 0.24);
+  color-scheme: light;
 }
 
+/* Soft dark: deep green-grey (not pure black) with softened text to avoid harsh contrast. */
+:root[data-theme="soft-dark"] {
+  --paper: #151b19;
+  --paper-2: #222a27;
+  --card: #1a211f;
+  --ink: #e3e8e3;
+  --ink-2: #a2ada7;
+  --line: #2c3532;
+  --teal: #86c2b5;
+  --teal-ink: #102420;
+  --teal-soft: #1f3530;
+  --on-brand: #0f211d;
+  --clay: #e3a08e;
+  --clay-soft: #3a2621;
+  --amber-soft: #352d1a;
+  --amber-ink: #e9cf95;
+  --sage: #9ccaa4;
+  --sage-soft: #1c2d20;
+  --ai: #b6b0e3;
+  --ai-soft: #25233a;
+  --bubble-mine: #2f5d55;
+  --bubble-theirs: #252d2a;
+  --on-mine: #eaf4f1;
+  --on-ai: #1c1a33;
+  --av-bg-s: 18%;
+  --av-bg-l: 27%;
+  --av-fg-l: 84%;
+  --focus: #a9dccf;
+  --brand: linear-gradient(135deg, #93cabd 0%, #86c2b5 100%);
+  --brand-soft: linear-gradient(135deg, rgba(134, 194, 181, 0.1), rgba(182, 176, 227, 0.08));
+  --ring: conic-gradient(from 210deg, #86c2b5, #b6b0e3, #86c2b5);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -16px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 24px 48px -18px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
+}
+
+/* System: calm by day, soft dark when the device is in dark mode. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #000000;
-    --paper-2: #1a1a1d;
-    --card: #0f0f11;
-    --ink: #f5f5f7;
-    --ink-2: #a3a3ad;
-    --line: #26262b;
-    --teal: #9d92ff;
-    --teal-ink: #0b0b10;
-    --teal-soft: #1f1b3d;
-    --clay: #ff6b93;
-    --clay-soft: #3a1422;
-    --amber-soft: #3a2c0c;
-    --amber-ink: #ffd88a;
-    --sage: #5bd08e;
-    --sage-soft: #0f2a1b;
-    --bubble-theirs: #26262b;
-    --focus: #b3aaff;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px -14px rgba(0, 0, 0, 0.8);
-    --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.9);
+  :root[data-theme="system"],
+  :root:not([data-theme]) {
+    --paper: #151b19;
+    --paper-2: #222a27;
+    --card: #1a211f;
+    --ink: #e3e8e3;
+    --ink-2: #a2ada7;
+    --line: #2c3532;
+    --teal: #86c2b5;
+    --teal-ink: #102420;
+    --teal-soft: #1f3530;
+    --on-brand: #0f211d;
+    --clay: #e3a08e;
+    --clay-soft: #3a2621;
+    --amber-soft: #352d1a;
+    --amber-ink: #e9cf95;
+    --sage: #9ccaa4;
+    --sage-soft: #1c2d20;
+    --ai: #b6b0e3;
+    --ai-soft: #25233a;
+    --bubble-mine: #2f5d55;
+    --bubble-theirs: #252d2a;
+    --on-mine: #eaf4f1;
+    --on-ai: #1c1a33;
+    --av-bg-s: 18%;
+    --av-bg-l: 27%;
+    --av-fg-l: 84%;
+    --focus: #a9dccf;
+    --brand: linear-gradient(135deg, #93cabd 0%, #86c2b5 100%);
+    --brand-soft: linear-gradient(135deg, rgba(134, 194, 181, 0.1), rgba(182, 176, 227, 0.08));
+    --ring: conic-gradient(from 210deg, #86c2b5, #b6b0e3, #86c2b5);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -16px rgba(0, 0, 0, 0.7);
+    --shadow-lg: 0 24px 48px -18px rgba(0, 0, 0, 0.8);
+    color-scheme: dark;
   }
+}
+
+/* High contrast: for people who need strong edges (WCAG AAA text contrast). */
+:root[data-theme="contrast"] {
+  --paper: #ffffff;
+  --paper-2: #efefef;
+  --card: #ffffff;
+  --ink: #000000;
+  --ink-2: #2b2b2b;
+  --line: #1f1f1f;
+  --teal: #00574c;
+  --teal-ink: #ffffff;
+  --teal-soft: #d8ece8;
+  --on-brand: #ffffff;
+  --clay: #8a1c00;
+  --clay-soft: #fbe3dc;
+  --amber-soft: #fff0c2;
+  --amber-ink: #3d2b00;
+  --sage: #1b5e20;
+  --sage-soft: #dcefdc;
+  --ai: #3b2f8f;
+  --ai-soft: #e7e4fb;
+  --bubble-mine: #00574c;
+  --bubble-theirs: #e6e6e6;
+  --on-mine: #ffffff;
+  --on-ai: #ffffff;
+  --av-bg-s: 0%;
+  --av-bg-l: 90%;
+  --av-fg-l: 5%;
+  --focus: #000000;
+  --brand: linear-gradient(#00574c, #00574c);
+  --brand-soft: linear-gradient(#f2f2f2, #f2f2f2);
+  --ring: conic-gradient(#000000, #000000);
+  --shadow: 0 0 0 1px #1f1f1f;
+  --shadow-lg: 0 0 0 2px #000000;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -72,6 +171,12 @@
   --color-sage: var(--sage);
   --color-sage-soft: var(--sage-soft);
   --color-bubble: var(--bubble-theirs);
+  --color-mine: var(--bubble-mine);
+  --color-on-brand: var(--on-brand);
+  --color-on-mine: var(--on-mine);
+  --color-on-ai: var(--on-ai);
+  --color-ai: var(--ai);
+  --color-ai-soft: var(--ai-soft);
   --font-sans: var(--font-jakarta);
   --font-read: var(--font-atkinson);
 }
@@ -114,10 +219,7 @@ body {
   background-image: var(--brand-soft);
 }
 .text-brand {
-  background-image: var(--brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--teal);
 }
 /* Story-style ring around an avatar. */
 .ring-story {
@@ -177,4 +279,15 @@ html:has(#demo-banner) {
   :root {
     --chrome-h: 0px;
   }
+}
+
+/* Muted pastel avatars: hue comes from the person (style --h); lightness from the theme. */
+.avatar-face {
+  background: hsl(var(--h, 165) var(--av-bg-s) var(--av-bg-l));
+  color: hsl(var(--h, 165) 32% var(--av-fg-l));
+}
+
+.bg-ai-solid {
+  background: var(--ai);
+  color: var(--on-ai);
 }

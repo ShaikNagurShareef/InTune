@@ -28,6 +28,7 @@ export const preferencesInput = z.strictObject({
   expected_version: z.number().int().positive(),
   inputMode: sourceMode,
   textSize: z.enum(["md", "lg", "xl"]),
+  theme: z.enum(["system", "calm", "soft-dark", "contrast"]),
   sentenceLength: z.enum(["short", "medium", "long"]),
   audioRate: z.number().min(0.5).max(2),
   reduceMotion: z.boolean(),

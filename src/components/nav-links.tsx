@@ -26,7 +26,7 @@ const SECONDARY: Item[] = [
 function Badge({ count }: { count: number }) {
   if (!count) return null;
   return (
-    <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-clay px-1 text-[11px] font-bold text-white">
+    <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-teal px-1 text-[11px] font-bold text-on-brand">
       {count}
       <span className="sr-only"> invitation{count === 1 ? "" : "s"}</span>
     </span>

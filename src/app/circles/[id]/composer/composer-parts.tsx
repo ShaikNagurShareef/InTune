@@ -139,7 +139,7 @@ export function TonePicker({ value, onChange }: { value: string[]; onChange: (ne
               );
             })}
           </div>
-          <button type="button" onClick={() => setIsOpen(false)} className="bg-brand mt-3 min-h-10 w-full rounded-xl text-sm font-bold text-white">
+          <button type="button" onClick={() => setIsOpen(false)} className="bg-brand mt-3 min-h-10 w-full rounded-xl text-sm font-bold text-on-brand">
             Done
           </button>
         </div>
@@ -223,8 +223,8 @@ export function WordingMenu({
         title={label}
         className={
           primary
-            ? "bg-brand inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold text-white disabled:opacity-40"
-            : `${iconButton} text-teal disabled:opacity-40`
+            ? "bg-ai-solid inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold disabled:opacity-40"
+            : `${iconButton} text-ai disabled:opacity-40`
         }
       >
         <Sparkles aria-hidden="true" className="h-5 w-5" />
@@ -272,7 +272,7 @@ export function TranslateButton({ current, onTranslate }: { current: WordingMode
         type="button"
         onClick={() => onTranslate(current)}
         title={`Translate (${currentLabel})`}
-        className="bg-brand inline-flex min-h-11 items-center gap-1.5 rounded-l-full pl-3 pr-2 text-sm font-extrabold text-white shadow-[var(--shadow)] hover:brightness-110"
+        className="bg-ai-solid inline-flex min-h-11 items-center gap-1.5 rounded-l-full pl-3 pr-2 text-sm font-extrabold shadow-[var(--shadow)] hover:brightness-110"
       >
         <Sparkles aria-hidden="true" className="h-4 w-4" />
         Translate
@@ -283,7 +283,7 @@ export function TranslateButton({ current, onTranslate }: { current: WordingMode
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((v) => !v)}
-        className="bg-brand inline-flex min-h-11 items-center rounded-r-full border-l border-white/30 pl-1.5 pr-2.5 text-white hover:brightness-110"
+        className="bg-ai-solid inline-flex min-h-11 items-center rounded-r-full border-l border-current/25 pl-1.5 pr-2.5 hover:brightness-110"
       >
         <ChevronDown aria-hidden="true" className="h-4 w-4" />
       </button>

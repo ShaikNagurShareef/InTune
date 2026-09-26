@@ -172,7 +172,7 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, starts
       <div
         className={`font-read relative whitespace-pre-wrap break-words px-4 py-2.5 text-[1.0625rem] leading-relaxed ${
           m.mine
-            ? `bg-brand rounded-[22px] text-white ${endsGroup ? "rounded-br-md" : ""}`
+            ? `bg-mine rounded-[22px] text-on-mine ${endsGroup ? "rounded-br-md" : ""}`
             : `bg-bubble rounded-[22px] text-ink ${endsGroup ? "rounded-bl-md" : ""}`
         } ${tags.length ? "mb-3.5" : ""}`}
       >

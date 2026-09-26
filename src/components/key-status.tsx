@@ -12,7 +12,7 @@ export function KeyStatus() {
     <Link
       href="/settings"
       className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-bold ${
-        hasKey ? "bg-teal-soft text-teal" : "bg-paper-2 text-ink-2"
+        hasKey ? "bg-ai-soft text-ai" : "bg-paper-2 text-ink-2"
       }`}
     >
       <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />

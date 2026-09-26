@@ -152,7 +152,7 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
           </label>
         ) : (
           <div className="flex justify-end" data-testid="review-preview">
-            <div className={`bg-brand font-read relative max-w-[90%] whitespace-pre-wrap break-words rounded-[22px] rounded-br-md px-4 py-2.5 text-[1.0625rem] text-white ${tags.length ? "mb-3.5" : ""}`}>
+            <div className={`bg-mine font-read relative max-w-[90%] whitespace-pre-wrap break-words rounded-[22px] rounded-br-md px-4 py-2.5 text-[1.0625rem] text-on-mine ${tags.length ? "mb-3.5" : ""}`}>
               {text}
               {tags.length > 0 && (
                 <span className="absolute -bottom-3.5 right-2 flex gap-1">
@@ -224,7 +224,7 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
           type="button"
           onClick={approve}
           disabled={!canSend}
-          className="bg-brand ml-auto inline-flex min-h-12 items-center gap-2 rounded-xl px-5 font-extrabold text-white shadow-[var(--shadow)] hover:brightness-110 disabled:opacity-40"
+          className="bg-brand ml-auto inline-flex min-h-12 items-center gap-2 rounded-xl px-5 font-extrabold text-on-brand shadow-[var(--shadow)] hover:brightness-110 disabled:opacity-40"
         >
           <Send aria-hidden="true" className="h-4 w-4" />
           {isSending ? "Sending… not sent yet" : draft.aiAssisted ? "Approve and send" : "Send"}

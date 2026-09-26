@@ -11,7 +11,7 @@ export interface ReadingAid {
 }
 
 const REPLY = {
-  yes: { text: "Yes — they’re asking something", cls: "bg-teal-soft text-teal" },
+  yes: { text: "Yes — they’re asking something", cls: "bg-ai-soft text-ai" },
   no: { text: "No reply needed", cls: "bg-sage-soft text-sage" },
   unclear: { text: "Not sure — you could ask them", cls: "bg-amber-soft text-amber-ink" },
 } as const;
@@ -36,8 +36,8 @@ export function UnderstandPanel({ aid }: { aid: ReadingAid }) {
   const s = aid.summary;
   return (
     <section aria-label="Translated for you" className="mt-2 overflow-hidden rounded-2xl border border-line bg-card shadow-[var(--shadow)]">
-      <header className="bg-brand-soft flex items-center gap-2 px-4 py-2 text-xs font-bold">
-        <Languages aria-hidden="true" className="h-4 w-4 text-teal" />
+      <header className="flex items-center gap-2 bg-ai-soft px-4 py-2 text-xs font-bold text-ai">
+        <Languages aria-hidden="true" className="h-4 w-4" />
         Translated for you
         <span className="ml-auto font-semibold text-ink-2">AI · only you see this</span>
       </header>

@@ -1,18 +1,14 @@
+import type React from "react";
 import { Users } from "lucide-react";
 import { statusInfo } from "@/lib/social";
 
-const TONES = [
-  "from-[#4f5bd5] to-[#962fbf]",
-  "from-[#962fbf] to-[#d62976]",
-  "from-[#fa7e1e] to-[#d62976]",
-  "from-[#1f9d8f] to-[#4f5bd5]",
-  "from-[#f2a93b] to-[#fa7e1e]",
-];
+/** Muted hues (sage, sand, lavender, sky, clay); lightness comes from the theme, so avatars stay calm. */
+const HUES = [165, 38, 252, 205, 14];
 
-function toneFor(seed: string): string {
+function hueFor(seed: string): number {
   let h = 0;
   for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return TONES[h % TONES.length];
+  return HUES[h % HUES.length];
 }
 
 const SIZES = {
@@ -39,7 +35,8 @@ export function Avatar({ name, seed, group = false, size = "md", ring = false, s
   const face = (
     <span
       aria-hidden="true"
-      className={`grid shrink-0 place-items-center rounded-full bg-gradient-to-br font-extrabold text-white ${SIZES[size]} ${toneFor(seed)}`}
+      style={{ "--h": hueFor(seed) } as React.CSSProperties}
+      className={`avatar-face grid shrink-0 place-items-center rounded-full font-extrabold ${SIZES[size]}`}
     >
       {name.trim().slice(0, 1).toUpperCase() || "?"}
     </span>

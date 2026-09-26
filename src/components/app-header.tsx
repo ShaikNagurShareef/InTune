@@ -25,7 +25,7 @@ export async function AppHeader() {
             <Link href="/signin" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold hover:bg-paper-2">
               <LogIn aria-hidden="true" className="h-5 w-5" /> Sign in
             </Link>
-            <Link href="/signup" className="bg-brand inline-flex min-h-11 items-center rounded-xl px-5 font-bold text-white shadow-[var(--shadow)] hover:brightness-110">
+            <Link href="/signup" className="bg-brand inline-flex min-h-11 items-center rounded-xl px-5 font-bold text-on-brand shadow-[var(--shadow)] hover:brightness-110">
               Create account
             </Link>
           </nav>
@@ -38,7 +38,7 @@ export async function AppHeader() {
   const demo = isDemoEmail(user.email);
   return (
     <>
-      <PrefsApplier textSize={prefs.textSize} reduceMotion={prefs.reduceMotion} />
+      <PrefsApplier textSize={prefs.textSize} reduceMotion={prefs.reduceMotion} theme={prefs.theme} />
       {/* Desktop side rail */}
       <aside
         id="app-header"
@@ -47,7 +47,7 @@ export async function AppHeader() {
         <Link href="/circles" className="px-2">
           <span className="hidden xl:inline"><Logo /></span>
           <span className="xl:hidden" aria-label="InTune home">
-            <span aria-hidden="true" className="bg-brand grid h-9 w-9 place-items-center rounded-[30%] text-white">
+            <span aria-hidden="true" className="bg-brand grid h-9 w-9 place-items-center rounded-[30%] text-on-brand">
               <AudioWaveform className="h-5 w-5" strokeWidth={2.4} />
             </span>
           </span>

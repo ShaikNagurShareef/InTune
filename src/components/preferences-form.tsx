@@ -9,6 +9,7 @@ import { speak, useSpeechAvailable } from "./speech";
 export interface Prefs {
   inputMode: string;
   textSize: string;
+  theme: string;
   sentenceLength: string;
   audioRate: number;
   reduceMotion: boolean;
@@ -64,6 +65,47 @@ function Choice({ legend, name, options, value, onChange }: {
   );
 }
 
+const THEMES = [
+  { value: "system", label: "Match my device", hint: "Calm by day, soft dark at night", swatch: ["#f6f4ef", "#3e7b70", "#151b19"] },
+  { value: "calm", label: "Calm", hint: "Soft paper, sage, low glare", swatch: ["#f6f4ef", "#3e7b70", "#e9e5db"] },
+  { value: "soft-dark", label: "Soft dark", hint: "Deep green-grey, gentle text", swatch: ["#151b19", "#86c2b5", "#252d2a"] },
+  { value: "contrast", label: "High contrast", hint: "Strong edges, black on white", swatch: ["#ffffff", "#00574c", "#000000"] },
+];
+
+/** Sensory colour theme; applied immediately so the person can see it before saving. */
+function ThemePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const choose = (v: string) => {
+    document.documentElement.setAttribute("data-theme", v);
+    onChange(v);
+  };
+  return (
+    <fieldset>
+      <legend className="mb-2 font-bold">Colours</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {THEMES.map((t) => (
+          <label
+            key={t.value}
+            className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-2xl border p-3 has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-teal ${
+              value === t.value ? "border-teal bg-teal-soft" : "border-line bg-card hover:border-ink-2"
+            }`}
+          >
+            <input type="radio" name="theme" value={t.value} checked={value === t.value} onChange={() => choose(t.value)} className="sr-only" />
+            <span aria-hidden="true" className="flex shrink-0 overflow-hidden rounded-full border border-line">
+              {t.swatch.map((c) => (
+                <span key={c} className="h-8 w-4" style={{ background: c }} />
+              ))}
+            </span>
+            <span>
+              <span className="block font-bold">{t.label}</span>
+              <span className="block text-xs text-ink-2">{t.hint}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export function PreferencesForm({ initial, afterSave }: { initial: Prefs; afterSave?: string }) {
   const router = useRouter();
   const [prefs, setPrefs] = useState(initial);
@@ -81,6 +123,7 @@ export function PreferencesForm({ initial, afterSave }: { initial: Prefs; afterS
         expected_version: prefs.version,
         inputMode: prefs.inputMode,
         textSize: prefs.textSize,
+        theme: prefs.theme,
         sentenceLength: prefs.sentenceLength,
         audioRate: prefs.audioRate,
         reduceMotion: prefs.reduceMotion,
@@ -113,6 +156,7 @@ export function PreferencesForm({ initial, afterSave }: { initial: Prefs; afterS
   return (
     <div className="space-y-7">
       <Choice legend="How do you usually start a message?" name="inputMode" options={INPUT_MODES} value={prefs.inputMode} onChange={(v) => update("inputMode", v)} />
+      <ThemePicker value={prefs.theme} onChange={(v) => update("theme", v)} />
       <Choice legend="Text size" name="textSize" options={TEXT_SIZES} value={prefs.textSize} onChange={(v) => update("textSize", v)} />
       <Choice legend="Wording help should use" name="sentenceLength" options={LENGTHS} value={prefs.sentenceLength} onChange={(v) => update("sentenceLength", v)} />
       <div>

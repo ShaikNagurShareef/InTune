@@ -16,7 +16,7 @@ export default function ChatsPage() {
         <p className="mt-1 text-ink-2">Say it your way. Nothing is sent until you approve the exact words.</p>
         <Link
           href="/circles?new=1"
-          className="bg-brand mt-5 inline-flex min-h-11 items-center rounded-xl px-5 font-bold text-white shadow-[var(--shadow)] hover:brightness-110"
+          className="bg-brand mt-5 inline-flex min-h-11 items-center rounded-xl px-5 font-bold text-on-brand shadow-[var(--shadow)] hover:brightness-110"
         >
           Send a message
         </Link>

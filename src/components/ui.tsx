@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 type Tone = "primary" | "quiet" | "danger" | "ghost";
 
 const TONES: Record<Tone, string> = {
-  primary: "bg-brand text-white shadow-[var(--shadow)] hover:brightness-110 active:scale-[0.98] disabled:opacity-40",
+  primary: "bg-brand text-on-brand shadow-[var(--shadow)] hover:brightness-110 active:scale-[0.98] disabled:opacity-40",
   quiet: "bg-paper-2 text-ink hover:brightness-95 active:scale-[0.98] disabled:opacity-40",
   danger: "text-clay border border-clay/40 hover:bg-clay-soft active:scale-[0.98] disabled:opacity-40",
   ghost: "text-ink-2 hover:text-ink hover:bg-paper-2 disabled:opacity-40",
@@ -55,7 +55,7 @@ export function Notice({ tone = "info", title, children }: { tone?: NoticeTone; 
 export function Tag({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "ai" | "warn" }) {
   const cls =
     tone === "ai"
-      ? "bg-teal-soft text-ink border-teal/30"
+      ? "bg-ai-soft text-ai border-transparent"
       : tone === "warn"
         ? "bg-clay-soft text-ink border-clay/40"
         : "bg-paper-2 text-ink-2 border-line";

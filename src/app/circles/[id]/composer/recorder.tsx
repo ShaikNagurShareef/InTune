@@ -174,7 +174,7 @@ export function Recorder({ kind, onCapture, onPermissionDenied }: Props) {
       {kind === "video" && (
         <div className={`relative overflow-hidden rounded-xl bg-ink ${state === "recording" ? "" : "hidden"}`}>
           <video ref={previewRef} muted playsInline className="aspect-video w-full object-cover" aria-label="Camera preview" />
-          <span className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-clay px-3 py-1 text-sm font-bold text-white">
+          <span className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-clay px-3 py-1 text-sm font-bold text-on-brand">
             <span aria-hidden="true" className="h-2 w-2 rounded-full bg-white" /> Camera on
           </span>
         </div>

@@ -70,6 +70,7 @@ export async function resetPreferences(userId: string): Promise<Preferences> {
     .set({
       inputMode: "type",
       textSize: "md",
+      theme: "system",
       sentenceLength: "medium",
       audioRate: 1,
       reduceMotion: false,

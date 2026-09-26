@@ -109,7 +109,7 @@ export function NewSheet({ onClose }: { onClose: () => void }) {
             <input name="name" required maxLength={80} placeholder="e.g. Board game night" className="h-12 w-full rounded-xl border border-line bg-paper-2 px-3 outline-none focus:border-teal" />
           </label>
           <p className="text-sm text-ink-2">Private, up to 20 people. You’ll invite people by email next, and they join from their Requests.</p>
-          <button type="submit" className="bg-brand min-h-12 w-full rounded-xl font-bold text-white hover:brightness-110">Create circle</button>
+          <button type="submit" className="bg-brand min-h-12 w-full rounded-xl font-bold text-on-brand hover:brightness-110">Create circle</button>
         </form>
       )}
     </Modal>

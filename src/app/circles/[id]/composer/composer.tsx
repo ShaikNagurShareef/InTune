@@ -445,7 +445,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
           {tones.length > 0 && <ChosenTones value={tones} onChange={setTones} />}
 
           {!isMedia && (
-            <div className="flex items-end gap-1 rounded-[28px] border border-line bg-paper py-1 pl-1 pr-2 transition focus-within:border-ink-2">
+            <div className="flex items-end gap-1 rounded-[28px] border border-line bg-card py-1 pl-1 pr-2 transition focus-within:border-teal focus-within:ring-3 focus-within:ring-teal/25">
               <TonePicker value={tones} onChange={setTones} />
               <label htmlFor="compose-text" className="sr-only">Your message</label>
               <textarea
@@ -455,7 +455,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
                 rows={1}
                 maxLength={2000}
                 placeholder={mode === "symbols" ? "Tap phrases, then edit…" : "Message…"}
-                className="font-read block max-h-40 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[1.0625rem] outline-none placeholder:text-ink-2 [field-sizing:content]"
+                className="font-read block max-h-40 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[1.0625rem] outline-none placeholder:text-ink-2 focus-visible:outline-none [field-sizing:content]"
               />
               {text.trim() ? (
                 <>
