@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { Ban, EyeOff, Flag, Lightbulb, Pencil, Reply, Square, Trash2, Volume2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Ban, EyeOff, Flag, Languages, Pencil, Reply, Square, Trash2, Volume2 } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
-import { useHasGeminiKey } from "@/lib/client/byok";
+import { useAiAvailable } from "@/components/ai-provider";
 import { toneInfo } from "@/lib/social";
 import { ActionMenu, type MenuAction } from "@/components/action-menu";
 import { Avatar } from "@/components/avatar";
@@ -23,13 +23,17 @@ interface Props {
   startsGroup: boolean;
   /** Last message of a run (shows avatar and the bubble tail). */
   endsGroup: boolean;
+  /** Reader opted in to automatic translation of incoming messages. */
+  autoTranslate: boolean;
   onReply: (target: ReplyTarget) => void;
   onHide: (id: string) => void;
   onChanged: () => void;
 }
 
-export function MessageItem({ message: m, replyTo, audioRate, showSender, startsGroup, endsGroup, onReply, onHide, onChanged }: Props) {
-  const hasKey = useHasGeminiKey();
+const AUTO_TRANSLATE_MIN_WORDS = 4;
+
+export function MessageItem({ message: m, replyTo, audioRate, showSender, startsGroup, endsGroup, autoTranslate, onReply, onHide, onChanged }: Props) {
+  const hasKey = useAiAvailable();
   const canSpeak = useSpeechAvailable();
   const [storedAid, setAid] = useState<ReadingAid | null>(null);
   // A reading aid for an older version is dropped as soon as the sender's correction arrives.
@@ -41,6 +45,25 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, starts
   const [notice, setNotice] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const aidRef = useRef<HTMLDivElement | null>(null);
+  const rowRef = useRef<HTMLLIElement | null>(null);
+  const shouldAuto =
+    autoTranslate && hasKey && !m.mine && !m.deleted && (m.text ?? "").trim().split(/\s+/).length >= AUTO_TRANSLATE_MIN_WORDS;
+
+  // Auto-translate when the message scrolls into view (cached per reader and version on the server).
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!shouldAuto || !el || storedAid || aidState !== "idle") return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        observer.disconnect();
+        void fetchAid(false);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+    // fetchAid is stable enough for this one-shot observer; re-run only when these change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAuto, storedAid, aidState, m.version]);
 
   if (m.deleted) {
     return (
@@ -54,20 +77,24 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, starts
   const text = m.text ?? "";
   const tags = m.toneTags.map(toneInfo).filter((t) => t !== undefined);
 
+  async function fetchAid(reveal: boolean) {
+    setAidState("loading");
+    try {
+      setAid(await api<ReadingAid>(`/api/v1/messages/${m.id}/simplify`, { method: "POST", gemini: true }));
+      setAidState("idle");
+      if (reveal) requestAnimationFrame(() => aidRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+    } catch (err) {
+      setAidError(err instanceof ApiError ? err.message : "Couldn't translate this message.");
+      setAidState("error");
+    }
+  }
+
   const understand = async () => {
     if (aid) {
       setAid(null);
       return;
     }
-    setAidState("loading");
-    try {
-      setAid(await api<ReadingAid>(`/api/v1/messages/${m.id}/simplify`, { method: "POST", gemini: true }));
-      setAidState("idle");
-      requestAnimationFrame(() => aidRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
-    } catch (err) {
-      setAidError(err instanceof ApiError ? err.message : "Couldn't prepare reading help.");
-      setAidState("error");
-    }
+    await fetchAid(true);
   };
 
   const listen = () => {
@@ -172,20 +199,20 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, starts
       onClick={understand}
       disabled={aidState === "loading"}
       aria-pressed={Boolean(aid)}
-      aria-label={aid ? "Hide reading help" : "Help me understand"}
-      title="Help me understand"
+      aria-label={aid ? "Hide translation" : "Translate this message"}
+      title="Translate into plain words"
       className={`grid h-10 w-10 place-items-center rounded-full transition hover:bg-paper-2 ${aid ? "text-teal" : "text-ink-2 hover:text-ink"}`}
     >
-      <Lightbulb aria-hidden="true" className={`h-5 w-5 ${aidState === "loading" ? "animate-pulse" : ""}`} />
+      <Languages aria-hidden="true" className={`h-5 w-5 ${aidState === "loading" ? "animate-pulse" : ""}`} />
     </button>
   ) : (
     <Link
       href="/settings"
-      aria-label="Help me understand (add your Gemini key)"
-      title="Add a key to get reading help"
+      aria-label="Translate this message (set up AI translation)"
+      title="Set up AI translation"
       className="grid h-10 w-10 place-items-center rounded-full text-ink-2/60 hover:bg-paper-2"
     >
-      <Lightbulb aria-hidden="true" className="h-5 w-5" />
+      <Languages aria-hidden="true" className="h-5 w-5" />
     </Link>
   );
 
@@ -194,7 +221,7 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, starts
     .join(" · ");
 
   return (
-    <li className={`flex flex-col ${m.mine ? "items-end" : "items-start"} ${startsGroup ? "mt-3" : "mt-0.5"}`}>
+    <li ref={rowRef} className={`flex flex-col ${m.mine ? "items-end" : "items-start"} ${startsGroup ? "mt-3" : "mt-0.5"}`}>
       {showSender && !m.mine && startsGroup && <p className="mb-1 ml-12 text-xs font-semibold text-ink-2">{m.senderName}</p>}
       {replyTo && (
         <p className={`mb-1 max-w-[70%] truncate rounded-2xl bg-paper-2 px-3 py-1.5 text-xs text-ink-2 ${m.mine ? "" : "ml-9"}`}>
@@ -218,6 +245,11 @@ export function MessageItem({ message: m, replyTo, audioRate, showSender, starts
         <div ref={aidRef} className={`w-full max-w-[36rem] scroll-mb-4 ${m.mine ? "" : "pl-9"}`}>
           <UnderstandPanel aid={aid} />
         </div>
+      )}
+      {aidState === "loading" && !aid && (
+        <p className="mt-1 flex items-center gap-1.5 pl-9 text-xs font-semibold text-ink-2">
+          <Languages aria-hidden="true" className="h-3.5 w-3.5 animate-pulse" /> Translating…
+        </p>
       )}
       {aidState === "error" && aidError && <div className="mt-1 max-w-md pl-9"><Notice tone="warn">{aidError}</Notice></div>}
       {isSpeaking && (

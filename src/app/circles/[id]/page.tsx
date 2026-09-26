@@ -28,7 +28,7 @@ export default async function CirclePage({ params }: { params: Promise<{ id: str
       me={{ id: user.id, displayName: user.displayName }}
       circle={circle}
       initialPage={page}
-      prefs={{ inputMode: prefs.inputMode, audioRate: prefs.audioRate }}
+      prefs={{ inputMode: prefs.inputMode, audioRate: prefs.audioRate, autoTranslate: prefs.autoTranslate }}
       phrases={phrases.map((p) => ({ id: p.id, phrase: p.phrase, meaning: p.meaning }))}
       uploadMode={storageMode()}
     />

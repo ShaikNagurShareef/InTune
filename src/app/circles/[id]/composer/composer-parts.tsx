@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, LayoutGrid, Mic, Smile, Sparkles, Video, X } from "lucide-react";
+import { Check, ChevronDown, LayoutGrid, Mic, Smile, Sparkles, Video, X } from "lucide-react";
 import { MAX_TONE_TAGS, TONE_TAGS } from "@/lib/social";
 import type { PhraseLite } from "../types";
 import type { InputMode, WordingMode } from "./types";
@@ -191,9 +191,9 @@ export function ToneChips({ value, onChange }: { value: string[]; onChange: (nex
 }
 
 const WORDING_OPTIONS: { value: WordingMode; label: string; hint: string }[] = [
-  { value: "keep", label: "Keep my wording", hint: "Only fix obvious slips. Your words stay yours." },
-  { value: "clearer", label: "Make clearer", hint: "Plain, complete sentences." },
-  { value: "shorter", label: "Make shorter", hint: "Fewest words, same details." },
+  { value: "clearer", label: "Clear & complete", hint: "Turns your words into plain, complete sentences others can act on." },
+  { value: "shorter", label: "Short & direct", hint: "Fewest words, every detail kept." },
+  { value: "keep", label: "Just fix slips", hint: "Keeps your wording; only fixes obvious typos or transcription slips." },
 ];
 
 /** ✨ Help me word it: choose a style and start. Nothing is sent until you approve the exact words. */
@@ -232,7 +232,7 @@ export function WordingMenu({
       </button>
       {isOpen && (
         <ul role="menu" className="absolute bottom-full right-0 z-30 mb-2 w-72 rounded-3xl border border-line bg-card p-2 shadow-[var(--shadow-lg)]">
-          <li role="none" className="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-wider text-ink-2">Help me word it</li>
+          <li role="none" className="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-wider text-ink-2">Translate style</li>
           {WORDING_OPTIONS.map((o) => (
             <li key={o.value} role="none">
               <button
@@ -253,6 +253,63 @@ export function WordingMenu({
             </li>
           ))}
           <li role="none" className="px-3 pb-2 pt-1 text-[11px] text-ink-2">You’ll check the exact words before anything is sent.</li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The main AI action: ✨ Translate what you mean into a clear message (with the remembered style),
+ * plus a ▾ menu to pick another style. Nothing is sent until you approve the exact words.
+ */
+export function TranslateButton({ current, onTranslate }: { current: WordingMode; onTranslate: (mode: WordingMode) => void }) {
+  const { isOpen, setIsOpen, ref } = usePopover();
+  const currentLabel = WORDING_OPTIONS.find((o) => o.value === current)?.label ?? "Clear & complete";
+  return (
+    <div ref={ref} className="relative flex shrink-0">
+      <button
+        type="button"
+        onClick={() => onTranslate(current)}
+        title={`Translate (${currentLabel})`}
+        className="bg-brand inline-flex min-h-11 items-center gap-1.5 rounded-l-full pl-3 pr-2 text-sm font-extrabold text-white shadow-[var(--shadow)] hover:brightness-110"
+      >
+        <Sparkles aria-hidden="true" className="h-4 w-4" />
+        Translate
+      </button>
+      <button
+        type="button"
+        aria-label="Translate style"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((v) => !v)}
+        className="bg-brand inline-flex min-h-11 items-center rounded-r-full border-l border-white/30 pl-1.5 pr-2.5 text-white hover:brightness-110"
+      >
+        <ChevronDown aria-hidden="true" className="h-4 w-4" />
+      </button>
+      {isOpen && (
+        <ul role="menu" className="absolute bottom-full right-0 z-30 mb-2 w-72 rounded-3xl border border-line bg-card p-2 shadow-[var(--shadow-lg)]">
+          <li role="none" className="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-wider text-ink-2">Translate style</li>
+          {WORDING_OPTIONS.map((o) => (
+            <li key={o.value} role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setIsOpen(false);
+                  onTranslate(o.value);
+                }}
+                className="flex w-full items-start gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-paper-2"
+              >
+                <span className="mt-0.5 w-4">{current === o.value && <Check aria-hidden="true" className="h-4 w-4 text-teal" />}</span>
+                <span>
+                  <span className="block text-sm font-bold">{o.label}</span>
+                  <span className="block text-xs text-ink-2">{o.hint}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+          <li role="none" className="px-3 pb-2 pt-1 text-[11px] text-ink-2">You’ll see your words beside the translation and approve it before anything is sent.</li>
         </ul>
       )}
     </div>

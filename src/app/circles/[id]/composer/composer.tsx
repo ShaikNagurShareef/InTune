@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, newIdempotencyKey } from "@/lib/client/api";
-import { setMediaConsent, useHasGeminiKey, useMediaConsent } from "@/lib/client/byok";
+import { setMediaConsent, useMediaConsent } from "@/lib/client/byok";
+import { useAiAvailable } from "@/components/ai-provider";
 import { CheckCircle2, CircleHelp, Eraser, FileAudio, LayoutGrid, Loader2, Mic, Pencil, Reply, Sparkles, Undo2, Video, X } from "lucide-react";
 import { Button, Notice, inputClass } from "@/components/ui";
 import type { CircleInfo, Me, PhraseLite, ReplyTarget } from "../types";
 import { Recorder, type Capture } from "./recorder";
 import { ReviewPanel } from "./review-panel";
 import { SymbolBoard } from "./symbol-board";
-import { ChosenTones, ModeBar, QuickReplies, TonePicker, WordingMenu } from "./composer-parts";
+import { ChosenTones, ModeBar, QuickReplies, TonePicker, TranslateButton, WordingMenu } from "./composer-parts";
 import { uploadCapture, type UploadMode } from "./upload";
 import type { Draft, InputMode, JobView, Pending, WordingMode } from "./types";
 
@@ -36,14 +37,17 @@ const MANUAL_REASONS: Record<string, string> = {
 const storageKey = (circleId: string) => `intune.compose.${circleId}`;
 const WORDING_KEY = "intune.wording";
 
-/** "Keep my wording" by default: help should never nudge people into masking their own voice. */
+/**
+ * Translate style, remembered per device. Defaults to "clear & complete"; the person always sees their own
+ * words beside the translation and can send those instead, so help never silently replaces their voice.
+ */
 function readWording(): WordingMode {
-  if (typeof window === "undefined") return "keep";
+  if (typeof window === "undefined") return "clearer";
   try {
     const saved = window.localStorage.getItem(WORDING_KEY);
-    return saved === "clearer" || saved === "shorter" ? saved : "keep";
+    return saved === "keep" || saved === "shorter" ? saved : "clearer";
   } catch {
-    return "keep";
+    return "clearer";
   }
 }
 
@@ -62,7 +66,7 @@ function describe(err: unknown): string {
 }
 
 export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMode, uploadMode, onSent }: Props) {
-  const hasKey = useHasGeminiKey();
+  const hasKey = useAiAvailable();
   const [mode, setMode] = useState<InputMode>(defaultMode);
   const [text, setText] = useState(() => readSaved(circle.id));
   const [history, setHistory] = useState<string[]>([]);
@@ -360,8 +364,8 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
 
   const needsKeyNotice = !hasKey && (
     <span>
-      AI help is off ·{" "}
-      <Link href="/settings" className="font-bold text-teal underline underline-offset-2">add your Gemini key</Link>
+      AI translation is off ·{" "}
+      <Link href="/settings" className="font-bold text-teal underline underline-offset-2">set it up</Link>
     </span>
   );
 
@@ -429,7 +433,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
                     <input type="checkbox" checked={consent} onChange={(e) => setMediaConsent(e.target.checked)} className="mt-1 h-5 w-5" />
                     <span>My recording is sent to Google Gemini with my key to turn it into words. InTune deletes it afterwards and never shares it with the circle.</span>
                   </label>
-                  <WordingMenu current={wording} onPick={startWith} disabled={!capture || !consent} label="Turn into words" primary />
+                  <WordingMenu current={wording} onPick={startWith} disabled={!capture || !consent} label="Turn into words & translate" primary />
                 </div>
               ) : (
                 needsKeyNotice
@@ -455,11 +459,12 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
               />
               {text.trim() ? (
                 <>
-                  {hasKey && <WordingMenu current={wording} onPick={startWith} label="Help me word it" />}
+                  {hasKey && <TranslateButton current={wording} onTranslate={startWith} />}
                   <button
                     type="button"
                     onClick={sendManual}
                     disabled={isSending}
+                    title="Send your words as they are"
                     className="min-h-11 rounded-full px-3 font-extrabold text-teal hover:bg-teal-soft disabled:opacity-50"
                   >
                     {isSending ? "Sending…" : "Send"}
@@ -507,9 +512,9 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
             </Notice>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button tone="primary" disabled={!transcriptEdit.trim()} onClick={() => reviewManually(transcriptEdit)}>Use these words</Button>
-            <Button disabled={!transcriptEdit.trim()} onClick={() => resume({ transcript: transcriptEdit, wording_mode: wording })}>
-              <Sparkles aria-hidden="true" className="h-4 w-4" /> Help me word it
+            <Button disabled={!transcriptEdit.trim()} onClick={() => reviewManually(transcriptEdit)}>Use these words as they are</Button>
+            <Button tone="primary" disabled={!transcriptEdit.trim()} onClick={() => resume({ transcript: transcriptEdit, wording_mode: wording })}>
+              <Sparkles aria-hidden="true" className="h-4 w-4" /> Translate
             </Button>
             <Button tone="ghost" onClick={cancel}>Record again</Button>
           </div>

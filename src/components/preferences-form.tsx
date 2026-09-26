@@ -13,6 +13,7 @@ export interface Prefs {
   audioRate: number;
   reduceMotion: boolean;
   quietMode: boolean;
+  autoTranslate: boolean;
   locale: string;
   version: number;
 }
@@ -84,6 +85,7 @@ export function PreferencesForm({ initial, afterSave }: { initial: Prefs; afterS
         audioRate: prefs.audioRate,
         reduceMotion: prefs.reduceMotion,
         quietMode: prefs.quietMode,
+        autoTranslate: prefs.autoTranslate,
         locale: prefs.locale,
       };
       const saved = await api<Prefs>("/api/v1/preferences", { method: "PUT", body });
@@ -135,6 +137,15 @@ export function PreferencesForm({ initial, afterSave }: { initial: Prefs; afterS
         {!canSpeak && <p className="mt-1 text-sm text-ink-2">This browser has no speech voice. Text stays visible.</p>}
       </div>
       <div className="space-y-3">
+        <label className="flex min-h-11 items-start gap-3 rounded-2xl bg-teal-soft p-3">
+          <input type="checkbox" checked={prefs.autoTranslate} onChange={(e) => update("autoTranslate", e.target.checked)} className="mt-1 h-5 w-5 accent-[var(--teal)]" />
+          <span>
+            <span className="block font-bold">Translate messages I receive</span>
+            <span className="block text-sm text-ink-2">
+              Each new message also shows “In plain words”, what they’re asking, and whether a reply is needed. Only you see it.
+            </span>
+          </span>
+        </label>
         <label className="flex min-h-11 items-center gap-3">
           <input type="checkbox" checked={prefs.reduceMotion} onChange={(e) => update("reduceMotion", e.target.checked)} className="h-5 w-5 accent-[var(--teal)]" />
           <span className="font-bold">Reduce motion</span>

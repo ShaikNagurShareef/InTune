@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { AlertTriangle, CircleHelp, Lightbulb, MessageSquareReply, Target, TextQuote } from "lucide-react";
+import { AlertTriangle, CircleHelp, Languages, MessageSquareReply, Target, TextQuote } from "lucide-react";
 
 export interface ReadingAid {
   messageVersion: number;
@@ -35,13 +35,16 @@ function Row({ icon: Icon, label, children }: { icon: typeof Target; label: stri
 export function UnderstandPanel({ aid }: { aid: ReadingAid }) {
   const s = aid.summary;
   return (
-    <section aria-label="Help me understand" className="mt-2 overflow-hidden rounded-2xl border border-line bg-card shadow-[var(--shadow)]">
+    <section aria-label="Translated for you" className="mt-2 overflow-hidden rounded-2xl border border-line bg-card shadow-[var(--shadow)]">
       <header className="bg-brand-soft flex items-center gap-2 px-4 py-2 text-xs font-bold">
-        <Lightbulb aria-hidden="true" className="h-4 w-4 text-teal" />
-        Help me understand
-        <span className="ml-auto font-semibold text-ink-2">AI-assisted · only you see this</span>
+        <Languages aria-hidden="true" className="h-4 w-4 text-teal" />
+        Translated for you
+        <span className="ml-auto font-semibold text-ink-2">AI · only you see this</span>
       </header>
       <dl className="space-y-3 p-4">
+        <Row icon={TextQuote} label="In plain words">
+          <span className="font-read text-[1.0625rem]">{aid.simplifiedText}</span>
+        </Row>
         {s?.asking && (
           <Row icon={Target} label="What they’re asking">
             <span className="font-bold">{s.asking}</span>
@@ -59,9 +62,6 @@ export function UnderstandPanel({ aid }: { aid: ReadingAid }) {
             <span className="text-amber-ink">{s.unclear}</span>
           </Row>
         )}
-        <Row icon={TextQuote} label="Simpler version">
-          <span className="font-read">{aid.simplifiedText}</span>
-        </Row>
         {aid.warnings.map((w) => (
           <p key={w} className="flex items-start gap-2 rounded-xl bg-clay-soft px-3 py-2 text-sm">
             <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-clay" />

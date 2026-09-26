@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { Atkinson_Hyperlegible, Plus_Jakarta_Sans } from "next/font/google";
 import { AppHeader } from "@/components/app-header";
 import { getServerUser } from "@/lib/auth/server-session";
+import { serverKeyAvailable } from "@/lib/gemini/client";
+import { AiProvider } from "@/components/ai-provider";
 import "./globals.css";
 
 const body = Atkinson_Hyperlegible({ variable: "--font-atkinson", subsets: ["latin"], weight: ["400", "700"] });
@@ -28,10 +30,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <a href="#main" className="sr-only-focusable fixed left-3 top-3 z-50 rounded-md bg-teal px-4 py-2 text-teal-ink">
           Skip to content
         </a>
-        <AppHeader />
-        <main id="main" className={signedIn ? "flex-1 pb-16 md:pb-0 md:pl-[76px] xl:pl-[244px]" : "flex-1"}>
-          {children}
-        </main>
+        <AiProvider serverAi={serverKeyAvailable()}>
+          <AppHeader />
+          <main id="main" className={signedIn ? "flex-1 pb-16 md:pb-0 md:pl-[76px] xl:pl-[244px]" : "flex-1"}>
+            {children}
+          </main>
+        </AiProvider>
       </body>
     </html>
   );

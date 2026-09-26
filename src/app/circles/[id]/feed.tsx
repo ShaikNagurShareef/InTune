@@ -14,6 +14,7 @@ interface Props {
   mutate: KeyedMutator<FeedPage>;
   audioRate: number;
   showSenders: boolean;
+  autoTranslate: boolean;
   onReply: (target: ReplyTarget) => void;
 }
 
@@ -34,7 +35,7 @@ function separatorLabel(iso: string): string {
 }
 
 /** Merges polled and older pages by ID, so polling and pagination never duplicate (FR06). */
-export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, onReply }: Props) {
+export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, autoTranslate, onReply }: Props) {
   const [older, setOlder] = useState<FeedMessage[]>([]);
   const [cursor, setCursor] = useState<string | null | undefined>(undefined);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -142,6 +143,7 @@ export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, o
                   replyTo={m.replyToId ? byId.get(m.replyToId) : undefined}
                   audioRate={audioRate}
                   showSender={showSenders}
+                  autoTranslate={autoTranslate}
                   startsGroup={startsGroup}
                   endsGroup={endsGroup}
                   onReply={onReply}

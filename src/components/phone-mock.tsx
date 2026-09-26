@@ -1,4 +1,4 @@
-import { Lightbulb, MessageSquareReply, Target } from "lucide-react";
+import { Languages, MessageSquareReply, Target } from "lucide-react";
 
 /** Static product illustration (decorative): an Instagram-style DM showing tone tags and reading help. */
 export function PhoneMock() {
@@ -27,13 +27,13 @@ export function PhoneMock() {
             <p className="bg-bubble max-w-[220px] rounded-[18px] rounded-bl-md px-3 py-2">It’d be great if you could maybe bring something?</p>
           </div>
           <div className="ml-2 rounded-2xl border border-line bg-card p-2.5 shadow-[var(--shadow)]">
-            <p className="flex items-center gap-1 text-[10px] font-bold text-teal"><Lightbulb className="h-3 w-3" /> Help me understand</p>
+            <p className="flex items-center gap-1 text-[10px] font-bold text-teal"><Languages className="h-3 w-3" /> Translated for you</p>
             <p className="mt-1.5 flex gap-1.5 text-[11px]"><Target className="mt-0.5 h-3 w-3 shrink-0 text-ink-2" /><b>Can you bring food? Any food is fine.</b></p>
             <p className="mt-1 flex gap-1.5 text-[11px]"><MessageSquareReply className="mt-0.5 h-3 w-3 shrink-0 text-ink-2" /><span className="rounded-full bg-teal-soft px-1.5 font-bold text-teal">Yes — they’re asking</span></p>
           </div>
         </div>
         <div className="m-2 flex items-center gap-2 rounded-full border border-line px-3 py-2 text-[12px] text-ink-2">
-          <span>🙂</span> Message… <span className="ml-auto font-extrabold text-teal">Send</span>
+          <span>🙂</span> Message… <span className="bg-brand ml-auto rounded-full px-2 py-0.5 text-[11px] font-extrabold text-white">✨ Translate</span>
         </div>
       </div>
     </div>

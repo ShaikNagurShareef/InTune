@@ -11,6 +11,7 @@ import {
   useMaskedKey,
 } from "@/lib/client/byok";
 import { Button, Notice, inputClass } from "@/components/ui";
+import { useAiSource } from "@/components/ai-provider";
 
 interface TestResult {
   models: string[];
@@ -19,6 +20,7 @@ interface TestResult {
 
 export function KeySettings() {
   const hasKey = useHasGeminiKey();
+  const source = useAiSource();
   const model = useGeminiModel();
   const [draftKey, setDraftKey] = useState("");
   const masked = useMaskedKey();
@@ -73,6 +75,13 @@ export function KeySettings() {
 
   return (
     <div className="space-y-6">
+      {source !== "own" && (
+        <Notice tone={source === "shared" ? "ok" : "info"} title={source === "shared" ? "AI translation is on" : "AI translation is not set up"}>
+          {source === "shared"
+            ? "InTune’s built-in AI is active for your account. You can optionally add your own Gemini key below — it takes priority and uses your own quota."
+            : "Add a Gemini key below to turn on translation. Everything else works without it."}
+        </Notice>
+      )}
       <section className="rounded-2xl border border-line bg-card p-6 shadow-[var(--shadow)]">
         {hasKey ? (
           <div className="space-y-4">

@@ -74,6 +74,7 @@ export async function resetPreferences(userId: string): Promise<Preferences> {
       audioRate: 1,
       reduceMotion: false,
       quietMode: false,
+      autoTranslate: false,
       locale: "en",
       version: current.version + 1,
       updatedAt: new Date(),

@@ -11,23 +11,31 @@ export const MODEL_HEADER = "x-gemini-model";
 const KEY_PATTERN = /^[A-Za-z0-9._-]{20,256}$/;
 const MODEL_PATTERN = /^(models\/)?gemini-[a-z0-9.-]{1,60}$/;
 
-/** Per-request BYOK credentials. Never persisted, logged, or placed in LangGraph config/state. */
+/**
+ * Per-request Gemini credentials. Never persisted, logged, or placed in LangGraph config/state.
+ * `source` is "user" for a key the person brought (always preferred) or "server" for the operator's shared key.
+ */
 export interface GeminiCredentials {
   readonly apiKey: string;
   readonly model: string;
+  readonly source?: "user" | "server";
+}
+
+/** The operator's shared key (Vercel env GEMINI_API_KEY), used only when a person hasn't brought their own. */
+export function serverKeyAvailable(): boolean {
+  return KEY_PATTERN.test(process.env.GEMINI_API_KEY?.trim() ?? "") || e2eStubEnabled();
 }
 
 export function credentialsFromRequest(req: Request): GeminiCredentials {
-  const apiKey = req.headers.get(KEY_HEADER)?.trim() ?? "";
-  if (!KEY_PATTERN.test(apiKey)) {
-    throw new AppError(
-      "ai_key_missing",
-      "Add your Gemini API key in Settings to use wording help. You can still send your own words.",
-    );
-  }
   const requested = req.headers.get(MODEL_HEADER)?.trim();
   const model = requested && MODEL_PATTERN.test(requested) ? requested.replace(/^models\//, "") : DEFAULT_MODEL;
-  return { apiKey, model };
+  const userKey = req.headers.get(KEY_HEADER)?.trim() ?? "";
+  if (KEY_PATTERN.test(userKey)) return { apiKey: userKey, model, source: "user" };
+  const serverKey = process.env.GEMINI_API_KEY?.trim() ?? "";
+  if (KEY_PATTERN.test(serverKey)) return { apiKey: serverKey, model: DEFAULT_MODEL, source: "server" };
+  // Playwright only: the scripted stand-in acts as the shared key (never enabled in production).
+  if (e2eStubEnabled()) return { apiKey: "e2e-stub-transport", model: DEFAULT_MODEL, source: "server" };
+  throw new AppError("ai_key_missing", "AI translation isn't set up yet. Add a Gemini key in Settings — you can still send your own words.");
 }
 
 /** Generates structured JSON. Tests replace this through `setGeminiTransport`. */

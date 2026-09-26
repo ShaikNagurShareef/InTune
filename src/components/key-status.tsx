@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
-import { useHasGeminiKey } from "@/lib/client/byok";
+import { useAiSource } from "./ai-provider";
 
 /** Whether wording help is available on this device. */
 export function KeyStatus() {
-  const hasKey = useHasGeminiKey();
+  const source = useAiSource();
+  const hasKey = source !== "none";
   return (
     <Link
       href="/settings"
@@ -15,7 +16,7 @@ export function KeyStatus() {
       }`}
     >
       <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
-      {hasKey ? "AI help on" : "AI help off"}
+      {hasKey ? "AI translation on" : "AI translation off"}
       <span className="sr-only"> (wording help; open settings)</span>
     </Link>
   );

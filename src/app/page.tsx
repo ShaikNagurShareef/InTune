@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BatteryLow, HeartHandshake, Lightbulb, Lock, MessageCircleQuestion, ShieldCheck, Smile, Sparkles } from "lucide-react";
+import { BatteryLow, HeartHandshake, Languages, Lightbulb, Lock, MessageCircleQuestion, ShieldCheck, Smile, Sparkles } from "lucide-react";
 import { getServerUser } from "@/lib/auth/server-session";
 import { DemoAccounts } from "@/components/demo-accounts";
 import { PhoneMock } from "@/components/phone-mock";
 
 const FEATURES = [
+  { icon: Languages, title: "AI translation, both ways", body: "Write, speak or tap phrases your way — ✨ Translate turns it into a clear message. Incoming messages can be translated into plain words for you." },
   { icon: ShieldCheck, title: "You approve every word", body: "Nothing is sent until you approve the exact text, tone and audience. Change a word, approve again." },
   { icon: MessageCircleQuestion, title: "It asks instead of guessing", body: "A missing day or an unclear yes/no gets one short question — never a plausible guess." },
-  { icon: Lightbulb, title: "Help me understand", body: "What are they asking? Is a reply needed? What’s unclear? Private to you, never guessing feelings." },
+  { icon: Lightbulb, title: "What are they asking?", body: "Each translation shows what’s being asked, whether a reply is needed, and what’s unclear — private to you, never guessing feelings." },
   { icon: Smile, title: "Say the tone out loud", body: "Tag a message “not upset”, “no rush” or “no reply needed” so nobody has to read between the lines." },
   { icon: BatteryLow, title: "Energy status", body: "“Low energy” or “replies may be slow” explains silence without another message to write." },
   { icon: HeartHandshake, title: "How to talk with me", body: "A short card your circles see: “Ask me direct questions. Give me time.” Understanding goes both ways." },
@@ -29,8 +30,8 @@ export default async function Landing() {
             <span className="text-brand">Send it only when it’s right.</span>
           </h1>
           <p className="mt-5 max-w-xl text-lg text-ink-2">
-            Private circles and one-to-one chats where you can type, tap phrases, speak or record. Optional AI help with wording
-            and understanding — and nothing leaves until you approve it.
+            An AI translator for autistic communication. Say it your way — type, tap phrases, speak or record — and InTune translates
+            it into a clear message for your circle, and their replies back into plain words for you. Nothing is sent until you approve it.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/signup" className="bg-brand inline-flex min-h-12 items-center rounded-xl px-6 text-lg font-bold text-white shadow-[var(--shadow)] hover:brightness-110">
@@ -41,7 +42,7 @@ export default async function Landing() {
             </Link>
           </div>
           <p className="mt-5 flex items-center gap-2 text-sm text-ink-2">
-            <Lock aria-hidden="true" className="h-4 w-4" /> AI help uses your own Gemini key, kept in your browser. Everything else works without it.
+            <Lock aria-hidden="true" className="h-4 w-4" /> Private circles only. No diagnosis, no guessing feelings, no public profiles.
           </p>
         </div>
         <PhoneMock />

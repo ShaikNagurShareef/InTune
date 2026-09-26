@@ -36,6 +36,8 @@ export const preferences = pgTable("preferences", {
   audioRate: real("audio_rate").notNull().default(1),
   reduceMotion: boolean("reduce_motion").notNull().default(false),
   quietMode: boolean("quiet_mode").notNull().default(false),
+  // Auto-translate incoming messages into plain words for this reader (private, opt-in).
+  autoTranslate: boolean("auto_translate").notNull().default(false),
   locale: text("locale").notNull().default("en"),
   // Shown to people who share a circle: a self-chosen energy status and a "how to talk with me" card.
   status: text("status").notNull().default("none"),

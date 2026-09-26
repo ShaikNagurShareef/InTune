@@ -69,3 +69,27 @@ describe("BYOK key format", () => {
     expect(() => credentialsFromRequest(req("has spaces in it but is long enough"))).toThrow();
   });
 });
+
+describe("shared server key", () => {
+  const req = (key?: string) => new Request("http://x", { headers: key ? { "x-gemini-key": key } : {} });
+  it("prefers the person's own key, falls back to the server key, else is off", async () => {
+    const { credentialsFromRequest, serverKeyAvailable } = await import("@/lib/gemini/client");
+    const previous = process.env.GEMINI_API_KEY;
+    try {
+      delete process.env.GEMINI_API_KEY;
+      expect(serverKeyAvailable()).toBe(false);
+      expect(() => credentialsFromRequest(req())).toThrow();
+
+      process.env.GEMINI_API_KEY = "server-key-server-key-server-key-000";
+      expect(serverKeyAvailable()).toBe(true);
+      expect(credentialsFromRequest(req())).toMatchObject({ source: "server", apiKey: process.env.GEMINI_API_KEY });
+      expect(credentialsFromRequest(req("AIzaSyOwnKeyOwnKeyOwnKeyOwnKey000000"))).toMatchObject({
+        source: "user",
+        apiKey: "AIzaSyOwnKeyOwnKeyOwnKeyOwnKey000000",
+      });
+    } finally {
+      if (previous === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = previous;
+    }
+  });
+});

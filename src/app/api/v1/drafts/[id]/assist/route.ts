@@ -2,7 +2,7 @@ import { z } from "zod";
 import { route, json, parseJson } from "@/lib/http";
 import { requireUser } from "@/lib/auth/current-user";
 import { idParam, type Ctx } from "@/lib/api";
-import { credentialsFromRequest } from "@/lib/gemini/client";
+import { aiCredentials } from "@/lib/gemini/access";
 import { startAssist } from "@/lib/services/assist";
 import { wordingMode } from "@/lib/validation";
 
@@ -12,7 +12,7 @@ const body = z.strictObject({ expected_version: z.number().int().positive(), wor
 
 export const POST = route<Ctx<{ id: string }>>(async (req, ctx) => {
   const user = await requireUser(req);
-  const creds = credentialsFromRequest(req);
+  const creds = await aiCredentials(req, user.id);
   const input = await parseJson(req, body);
   const job = await startAssist(
     user.id,

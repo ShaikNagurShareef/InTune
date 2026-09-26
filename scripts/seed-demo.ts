@@ -10,7 +10,7 @@
 import "dotenv/config";
 import { and, eq, inArray, like, sql } from "drizzle-orm";
 import { db } from "../src/lib/db";
-import { circles, memberships, messages, users } from "../src/lib/db/schema";
+import { circles, memberships, messages, preferences, users } from "../src/lib/db/schema";
 import { setCommCard, setStatus, signUp } from "../src/lib/services/accounts";
 import { createCircle } from "../src/lib/services/circles";
 import { openDirect } from "../src/lib/services/direct";
@@ -222,6 +222,12 @@ async function seed(): Promise<void> {
     .update(memberships)
     .set({ lastReadAt: sql`now()` })
     .where(and(inArray(memberships.userId, [ids.jordan.id, ids.sam.id, ids.grace.id, ids.ava.id])));
+
+  // Maya and Leo have opted in to automatic translation of messages they receive.
+  await db()
+    .update(preferences)
+    .set({ autoTranslate: true })
+    .where(inArray(preferences.userId, [ids.maya.id, ids.leo.id]));
 
   // The guest account has one invitation waiting in Requests.
   await inviteByEmail(ids.jordan.id, games, ids.guest.email);

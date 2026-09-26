@@ -1,0 +1,1 @@
+ALTER TABLE "preferences" ADD COLUMN "auto_translate" boolean DEFAULT false NOT NULL;

@@ -32,6 +32,7 @@ export const preferencesInput = z.strictObject({
   audioRate: z.number().min(0.5).max(2),
   reduceMotion: z.boolean(),
   quietMode: z.boolean(),
+  autoTranslate: z.boolean(),
   locale: z.enum(["en"]),
 });
 export type PreferencesInput = z.infer<typeof preferencesInput>;

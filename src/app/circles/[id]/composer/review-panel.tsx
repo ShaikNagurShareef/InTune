@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ArrowLeft, BookmarkPlus, CircleHelp, Pencil, Send, ShieldCheck, Undo2, Users } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowLeft, BookmarkPlus, CircleHelp, Pencil, Send, ShieldCheck, Undo2, Users } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
 import { toneInfo } from "@/lib/social";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
@@ -120,9 +120,19 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
     <section aria-labelledby="review-heading" className="space-y-4">
       <div className="flex items-center gap-2">
         <ShieldCheck aria-hidden="true" className="h-5 w-5 text-teal" />
-        <h3 id="review-heading" className="text-lg font-extrabold">Check before sending</h3>
+        <h3 id="review-heading" className="text-lg font-extrabold">{draft.aiAssisted ? "Check the translation" : "Check before sending"}</h3>
         {draft.aiAssisted && <Tag tone="ai">AI-assisted</Tag>}
       </div>
+
+      {draft.aiAssisted && original && (
+        <div className="rounded-3xl border border-line p-4">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-ink-2">You wrote</p>
+          <p className="font-read whitespace-pre-wrap text-lg">{original}</p>
+          <p className="mt-2 flex items-center gap-1 text-xs font-bold text-teal">
+            <ArrowDown aria-hidden="true" className="h-4 w-4" /> Translated so others understand it the way you mean it
+          </p>
+        </div>
+      )}
 
       <p className="flex items-center gap-2 text-sm text-ink-2">
         <Users aria-hidden="true" className="h-4 w-4" />
@@ -134,7 +144,7 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
 
       {/* What the other person will see, exactly. */}
       <div className="rounded-3xl bg-paper-2 p-4">
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-ink-2">Exactly what they’ll see</p>
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-ink-2">They’ll see exactly this</p>
         {isEditing ? (
           <label className="block">
             <span className="sr-only">Your message — exactly as it will be sent</span>
@@ -164,7 +174,7 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
           {isDirty && <Button className="text-sm" onClick={() => void saveEdit()}>Save edit</Button>}
           {draft.aiAssisted && original && original !== text && (
             <Button tone="ghost" className="text-sm" onClick={useOriginal}>
-              <Undo2 aria-hidden="true" className="h-4 w-4" /> Use my original words
+              <Undo2 aria-hidden="true" className="h-4 w-4" /> Send my own words instead
             </Button>
           )}
         </div>
@@ -172,11 +182,6 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
 
       <ToneChips value={draft.toneTags} onChange={changeTones} />
 
-      {draft.aiAssisted && original && original !== text && (
-        <p className="text-sm text-ink-2">
-          Your original words: <span className="font-read text-ink">“{original}”</span>
-        </p>
-      )}
 
       {hasPlaceholder && (
         <Notice tone="uncertain" title="Something is still missing">
@@ -222,7 +227,7 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
           className="bg-brand ml-auto inline-flex min-h-12 items-center gap-2 rounded-xl px-5 font-extrabold text-white shadow-[var(--shadow)] hover:brightness-110 disabled:opacity-40"
         >
           <Send aria-hidden="true" className="h-4 w-4" />
-          {isSending ? "Sending… not sent yet" : "Approve and send"}
+          {isSending ? "Sending… not sent yet" : draft.aiAssisted ? "Approve and send" : "Send"}
         </button>
       </div>
       {draft.aiAssisted && original && <SavePhrase source={original} meaning={text} />}

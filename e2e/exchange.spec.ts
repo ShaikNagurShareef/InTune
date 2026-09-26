@@ -71,8 +71,7 @@ test("G1: compose → clarify → approve → receive → understand → reply",
   await addKey(ben.page);
   await ben.page.goto(circleUrl);
   await ben.page.getByLabel("Your message").fill("want come dinner friday loud outside?");
-  await ben.page.getByRole("button", { name: "Help me word it" }).click();
-  await ben.page.getByRole("menuitem", { name: /Make clearer/ }).click();
+  await ben.page.getByRole("button", { name: "Translate", exact: true }).click();
   await expect(ben.page.getByRole("heading", { name: "Where would you like to sit?" })).toBeVisible();
   await ben.page.getByRole("button", { name: "Outside" }).click();
 
@@ -86,7 +85,7 @@ test("G1: compose → clarify → approve → receive → understand → reply",
   await ana.page.goto(circleUrl);
   const incoming = ana.page.getByRole("listitem").filter({ hasText: "sit outside?" }).last();
   await expect(incoming.getByText("AI-assisted · approved by sender")).toBeVisible();
-  await incoming.getByRole("button", { name: "Help me understand" }).click();
+  await incoming.getByRole("button", { name: "Translate this message" }).click();
   await expect(incoming.getByText("only you see this")).toBeVisible();
   await expect(incoming.getByText("What they’re asking")).toBeVisible();
 
@@ -100,11 +99,10 @@ test("G1: compose → clarify → approve → receive → understand → reply",
   await expect(ben.page.getByText(/Replied to you/)).toBeVisible();
 });
 
-test("manual messaging works with no key, using only the keyboard", async ({ browser }) => {
+test("sending your own words works using only the keyboard", async ({ browser }) => {
   const { page } = await signUp(browser, "Kai");
   await createCircle(page, "Solo");
   await page.keyboard.press("Escape");
-  await expect(page.getByText("AI help is off")).toBeVisible();
   await page.getByLabel("Your message").focus();
   await page.keyboard.type("Hello from the keyboard");
   const send = page.getByRole("button", { name: "Send", exact: true });

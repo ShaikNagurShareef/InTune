@@ -29,7 +29,7 @@ interface Props {
   me: Me;
   circle: CircleInfo;
   initialPage: FeedPage;
-  prefs: { inputMode: string; audioRate: number };
+  prefs: { inputMode: string; audioRate: number; autoTranslate: boolean };
   phrases: PhraseLite[];
   uploadMode: UploadMode;
 }
@@ -104,6 +104,7 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
           mutate={mutate}
           audioRate={prefs.audioRate}
           showSenders={!isDirect}
+          autoTranslate={prefs.autoTranslate}
           onReply={setReplyTo}
         />
         <div className="shrink-0">

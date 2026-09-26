@@ -140,12 +140,12 @@ export function buildAssistGraph(deps: AssistDeps, checkpointer: BaseCheckpointS
   };
 
   const retrievePhrases = async (s: AssistStateType) => {
-    await deps.onStage("Checking your phrasebook");
+    await deps.onStage("Understanding what you mean");
     return { phrases: await deps.findPhrases(s.ownerId, s.transcript) };
   };
 
   const compose = async (s: AssistStateType) => {
-    await deps.onStage("Drafting wording");
+    await deps.onStage("Translating");
     const input = {
       mode: s.wordingMode,
       sentence_length: s.sentenceLength,
@@ -175,7 +175,7 @@ export function buildAssistGraph(deps: AssistDeps, checkpointer: BaseCheckpointS
   };
 
   const checkMeaning = async (s: AssistStateType) => {
-    await deps.onStage("Checking the meaning is kept");
+    await deps.onStage("Checking nothing was changed or added");
     const draft = s.composed?.draft_text ?? "";
     const input = { source: s.transcript, answers: s.answers, draft };
     const out = await timed("check", () =>
