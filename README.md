@@ -80,18 +80,182 @@ Why LiveKit: we compared it with Daily, Agora, 100ms and Twilio Video. It's open
 
 ## Architecture
 
-```
-Browser (Next.js client) ──► Next.js route handlers (/api/v1/*) ──► Postgres (Drizzle)
-   │  BYOK key in localStorage     │  session, authz, approval, idempotent publish
-   │  x-gemini-key header          ├─► LangGraph.js assist graph ──► Gemini (@google/genai)
-   └─► Vercel Blob (private) ◄─────┘     validate → interpret → [confirm transcript] → phrasebook
-                                          → compose → check meaning → clarify ⟲ | review
-                                          (Postgres checkpointer; key passed by closure, never state)
+### System overview
+
+```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 420}}}%%
+flowchart TB
+  subgraph C["🖥️ Browser · Next.js client · React 19"]
+    direction LR
+    UI["Chats · Composer<br/>Plan it together · Call room"] ~~~ Key["Own AI key (optional)<br/>stays in the browser"] ~~~ Speech["Web Speech API<br/>captions · read aloud"] ~~~ LKC["LiveKit client<br/>WebRTC + data channel"]
+  end
+
+  API["▲ Vercel · Next.js 16 · proxy.ts + /api/v1/* route handlers<br/>nonce CSP · httpOnly session · membership check on every route<br/>rate limits · Zod validation"]
+
+  subgraph SV["Domain services"]
+    direction LR
+    Approve["Approval + publish<br/>exact text & audience hash<br/>one idempotent transaction"] ~~~ Assist["Assist graph · LangGraph.js<br/>translate · clarify · review"] ~~~ Aid["Reading aid<br/>plain words · the ask<br/>reply needed"] ~~~ Plan["Plan it together"] ~~~ Interp["Live interpreter<br/>say it for me"] ~~~ Calls["Calls<br/>join tokens · rooms"]
+  end
+
+  subgraph GR["Guardrails"]
+    direction LR
+    Slots["Critical-slot check<br/>no/not · times · numbers · names"] ~~~ Router["AI router<br/>model fallback + cooldowns"] ~~~ Cron["Retention cron<br/>erase clips & drafts in 24 h"]
+  end
+
+  subgraph AI["🤖 AI providers"]
+    direction LR
+    Gemini["Google Gemini"] ~~~ OpenAI["OpenAI<br/>fallback"] ~~~ Llama["Meta Llama<br/>optional"]
+  end
+
+  subgraph D["🗄️ Data"]
+    direction LR
+    PG[("Neon Postgres<br/>Drizzle ORM")] ~~~ CK[("LangGraph<br/>checkpoints")] ~~~ Blob[("Vercel Blob<br/>private clips")]
+  end
+
+  LK["📡 LiveKit Cloud · WebRTC SFU"]
+
+  C -->|"HTTPS · session cookie · own AI key per request, never stored"| API
+  API --> SV
+  SV --> GR
+  GR -->|"only when AI is used"| AI
+  SV --> D
+  C <-->|"WebRTC media + data channel"| LK
+  LK -.->|"webhook: room finished"| API
+
+  classDef client fill:#fcfbf8,stroke:#5d6a65,color:#26332f
+  classDef server fill:#e1eeea,stroke:#3e7b70,color:#26332f
+  classDef guard fill:#f4ead3,stroke:#a07a2c,color:#26332f
+  classDef ai fill:#ecebf5,stroke:#635b9e,color:#26332f
+  classDef data fill:#eef2f7,stroke:#4a6a8a,color:#26332f
+  classDef rt fill:#f4e3dc,stroke:#a8513d,color:#26332f
+  class UI,Key,Speech,LKC client
+  class API,Approve,Assist,Aid,Plan,Interp,Calls server
+  class Slots,Router,Cron guard
+  class Gemini,OpenAI,Llama ai
+  class PG,CK,Blob data
+  class LK rt
+  style C fill:#f6f4ef,stroke:#dfdad0
+  style SV fill:#f6f4ef,stroke:#dfdad0
+  style GR fill:#f6f4ef,stroke:#dfdad0
+  style AI fill:#f6f4ef,stroke:#dfdad0
+  style D fill:#f6f4ef,stroke:#dfdad0
 ```
 
-- **Stack:** Next.js 16 (App Router), TypeScript, Tailwind 4, Drizzle ORM, Postgres (Neon), LangGraph.js with `PostgresSaver`, `@google/genai`, Vercel Blob (private), `jose` sessions.
-- **Realtime:** polling every 3 s with stable `(created_at, id)` ordering for messages (Vercel has no websockets); calls use LiveKit (WebRTC media + data channels).
-- **Spec endpoints:** `POST /v1/drafts`, `PATCH /v1/drafts/{id}` (expected_version), `POST /v1/drafts/{id}/assist`, `GET /v1/jobs/{id}`, `POST /v1/jobs/{id}/clarify`, `POST /v1/drafts/{id}/approve`, `POST /v1/messages` (Idempotency-Key), `GET /v1/circles/{id}/messages` (cursor), `POST /v1/messages/{id}/simplify`, plus circles, invites, membership, phrasebook, blocks, reports, media and account deletion.
+### Translate, clarify, review (LangGraph)
+
+AI output only ever reaches a draft. Nothing is sent from inside the graph.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> validateInput
+  validateInput --> interpret
+  interpret --> confirmTranscript: voice or video
+  interpret --> retrievePhrases: typed text
+  interpret --> [*]: AI unavailable → own words
+  confirmTranscript --> retrievePhrases: person confirms or edits
+  retrievePhrases --> compose: person's own phrasebook
+  compose --> checkMeaning
+  checkMeaning --> clarify: something is ambiguous
+  clarify --> compose: person answers
+  checkMeaning --> review: meaning flags attached
+  review --> [*]: draft ready to approve
+```
+
+### Sending: exact approval, then one idempotent publish
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Leo
+  participant App as InTune app
+  participant API as /api/v1
+  participant Graph as Assist graph
+  participant AI as AI router
+  participant DB as Postgres
+  actor Maya
+  Leo->>App: "sat ok. no loud music pls. leave 8 maybe"
+  App->>API: POST /drafts/{id}/assist
+  API->>Graph: run (key passed by closure, never stored)
+  Graph->>AI: compose + meaning check
+  AI-->>Graph: clear wording + flags
+  Graph->>Graph: critical-slot diff (not · times · names)
+  Graph-->>App: review: exact text, audience, flags
+  Leo->>App: Approve and send
+  App->>API: POST /drafts/{id}/approve (text he saw)
+  API->>DB: approval = user + draft version + content hash + audience hash
+  App->>API: POST /messages (Idempotency-Key)
+  API->>DB: publishMessage(): one transaction, re-check hashes & membership
+  DB-->>Maya: message · "AI-assisted · approved by sender"
+  Maya->>API: Translate (private reading aid, only she sees it)
+```
+
+### Live call with the interpreter
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Leo
+  participant LB as Leo's browser
+  participant LK as LiveKit Cloud (SFU)
+  participant MB as Maya's browser
+  participant API as /api/v1
+  participant AI as AI router
+  actor Maya
+  LB->>API: POST /calls/{id}/token (members only, blocks respected)
+  MB->>API: POST /calls/{id}/token
+  LB->>LK: join room (WebRTC)
+  MB->>LK: join room (WebRTC)
+  Leo->>LB: speaks
+  LB->>LB: Web Speech API → caption
+  LB->>LK: caption (data channel)
+  LK->>MB: caption
+  MB->>API: POST /calls/{id}/interpret
+  API->>AI: plain words · the ask · reply needed
+  AI-->>MB: interpretation (private to Maya, never stored)
+  MB-->>Maya: ✨ In plain words
+  Note over LB,MB: "Say it for me" and one-tap signals also travel on the data channel. Nothing from the call is recorded.
+```
+
+## Tech stack
+
+| Layer | Technology | Why |
+| --- | --- | --- |
+| Web app | **Next.js 16.3** (App Router), **React 19.2**, **TypeScript 5** | One codebase for UI and API; server components; deploys to Vercel |
+| UI | **Tailwind CSS 4**, lucide-react, SWR, Atkinson Hyperlegible + Plus Jakarta Sans fonts | Calm, readable themes (Calm, Soft dark, High contrast); polling with a stable order |
+| AI orchestration | **LangGraph.js 1.4** + Postgres checkpointer | Resumable translate → clarify → review flow with human-in-the-loop pauses |
+| AI models | **Google Gemini** (`@google/genai` 2.x), **OpenAI** (`openai` 7.x), optional **Meta Llama** (Llama API, Groq or Together) | Automatic fallback across models and providers on rate limits and overload |
+| Meaning safety | Deterministic critical-slot check, Zod 4 schemas for every model reply | A lost "not", time, number, name or condition is flagged; malformed output is rejected |
+| Live calls | **LiveKit** (WebRTC SFU): livekit-client 2.22, @livekit/components-react 2.9, livekit-server-sdk 2.19 | Adaptive stream, dynacast and simulcast; data channel for captions and signals |
+| Speech | Browser **Web Speech API** (captions) and **speech synthesis** (read aloud) | On-device; nothing is recorded |
+| Database | **Neon Postgres**, **Drizzle ORM** 0.45 with migrations, `pg` | Transactions for approval and publishing; unique idempotency keys |
+| Files | **Vercel Blob** (private) | Voice and video clips, erased once turned into words or within 24 h |
+| Auth & security | `jose` sessions (httpOnly cookie), bcryptjs, nonce CSP, origin (CSRF) checks, rate limits | Every route checks the session and membership; outsiders get a non-disclosing 404 |
+| Hosting | **Vercel** (auto-deploy from `main`, cron for retention) | https://intune-eta.vercel.app |
+| Testing | **Vitest 5** + PGlite (in-memory Postgres), **Playwright 1.63** (two-browser flows incl. a real call), ESLint 9 | 103 unit/integration tests, 5 end-to-end tests |
+| Demo video | Playwright (CDP screencast), ElevenLabs or macOS voice, ffmpeg + libass | `npm run video` re-records the live app with narration and captions |
+| Dev harness | [ECC](https://github.com/affaan-m/ECC) for Claude Code | Rules, review agents and skills used while building |
+
+**Realtime:** messages update by polling every 3 s with a stable `(created_at, id)` order, because Vercel has no websockets. Calls use LiveKit (WebRTC media plus data channels).
+
+**Spec endpoints:**
+- Drafts and AI help:
+  - `POST /v1/drafts`
+  - `PATCH /v1/drafts/{id}` (expected_version)
+  - `POST /v1/drafts/{id}/assist`
+  - `GET /v1/jobs/{id}`
+  - `POST /v1/jobs/{id}/clarify`
+- Approving and sending:
+  - `POST /v1/drafts/{id}/approve`
+  - `POST /v1/messages` (Idempotency-Key)
+- Reading:
+  - `GET /v1/circles/{id}/messages` (cursor)
+  - `POST /v1/messages/{id}/simplify`
+- Plans and calls:
+  - `POST /v1/circles/{id}/plan`
+  - `POST /v1/circles/{id}/calls`
+  - `POST /v1/calls/{id}/{token|interpret|say|end}`
+- Also: circles, invites, membership, phrasebook, blocks, reports, media and account deletion.
 
 ## Evaluation
 
