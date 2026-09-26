@@ -34,6 +34,8 @@ export interface Scene {
   as?: DemoUser;
   /** Label shown top-left for the whole scene. */
   label?: string;
+  /** YouTube chapter that starts with this scene (scenes without one continue the previous chapter). */
+  chapter?: string;
   /** Changes demo data (so re-recording is cleaner after a reseed). */
   mutates?: boolean;
   setup?: (ctx: SceneCtx) => Promise<void>;
@@ -66,6 +68,7 @@ const SIMULATED_SPEECH = "Leo’s speech is simulated for this recording · the 
 export const SCENES: Scene[] = [
   {
     id: "title",
+    chapter: "Why InTune",
     kind: "card",
     card: "title",
     beats: [
@@ -74,11 +77,25 @@ export const SCENES: Scene[] = [
     ],
   },
   {
+    id: "story",
+    kind: "card",
+    card: "story",
+    beats: [
+      { say: "I grew up with a close friend who found conversations hard.", run: ({ card }) => card(1) },
+      { say: "In groups, he struggled to keep up, and I often watched him get lost in the conversation.", run: ({ card }) => card(2) },
+      { say: "I always wished I could build something to help him.", run: ({ card }) => card(3) },
+      {
+        say: "Today, AI makes that possible. So I built InTune, so that nobody has to feel lost in a group, and no friend has to watch it happen.",
+        run: ({ card }) => card(4),
+      },
+    ],
+  },
+  {
     id: "problem",
     kind: "card",
     card: "problem",
     beats: [
-      { say: "Autistic adults are far more likely to feel lonely, and it’s rarely for lack of wanting to connect.", run: ({ card }) => card(1) },
+      { say: "He wasn’t alone. Autistic adults are far more likely to feel lonely, and it’s rarely for lack of wanting to connect.", run: ({ card }) => card(1) },
       {
         say: "Research shows where it breaks: when autistic and non-autistic people pass on a story, details get lost, and rapport drops.",
         run: ({ card }) => card(2),
@@ -97,6 +114,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: "home",
+    chapter: "Maya’s chats: status and tone tags",
     kind: "app",
     as: "maya",
     label: "Signed in as Maya · autistic",
@@ -128,6 +146,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: "translate-in",
+    chapter: "Understanding what others mean",
     kind: "app",
     as: "maya",
     label: "Maya · a message from her sister",
@@ -181,6 +200,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: "translate-out",
+    chapter: "Being understood, with approval",
     kind: "app",
     as: "leo",
     label: "Signed in as Leo · autistic",
@@ -225,6 +245,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: "profile",
+    chapter: "How to talk with me",
     kind: "app",
     as: "maya",
     label: "Maya’s profile",
@@ -260,6 +281,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: "plan",
+    chapter: "Plan it together",
     kind: "app",
     as: "priya",
     label: "Signed in as Priya · Maya’s sister",
@@ -316,6 +338,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: "call",
+    chapter: "Live calls with an AI interpreter",
     kind: "app",
     as: "maya",
     label: "Maya · live call with Leo",
@@ -399,6 +422,7 @@ export const SCENES: Scene[] = [
   },
   {
     id: "trust",
+    chapter: "Trust by design",
     kind: "card",
     card: "trust",
     beats: [

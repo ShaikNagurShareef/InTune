@@ -2,6 +2,10 @@
 
 **Live:** https://intune-eta.vercel.app · **Code:** https://github.com/ShaikNagurShareef/InTune · **Demo accounts:** see [DEMO.md](DEMO.md)
 
+## Why I built this
+
+I grew up with a close friend who found conversations hard. In groups, he struggled to keep up, and I often watched him get lost. I always wished I could build something to help him. Now AI makes that possible, so I built InTune: nobody should have to feel lost in a group, and no friend should have to watch it happen.
+
 ## Who it's for
 
 InTune is for autistic adults, and for the family, friends and colleagues they want to stay close to.

@@ -1,5 +1,5 @@
 import { SCENES } from "../script";
-import { cachedSpeech, hasApiKey, listVoices, MODEL_ID, VOICE_ID } from "../lib/tts";
+import { cachedSpeech, listVoices, provider, providerLabel } from "../lib/tts";
 import { synthesizeScene } from "../lib/narration";
 
 /**
@@ -23,12 +23,9 @@ for (const scene of SCENES) {
     if (!cachedSpeech(b.say, scene.beats[i - 1]?.say ?? "", scene.beats[i + 1]?.say ?? "")) missing += b.say.length;
   });
 }
-console.log(`Narration: ${total} characters, ${missing} not yet synthesized (voice ${VOICE_ID}, model ${MODEL_ID}).`);
+console.log(`Narration: ${total} characters, ${missing} not yet synthesized · voice: ${providerLabel()}.`);
+if (provider() === "mac") console.log("  (No ElevenLabs key found: using the Mac voice. Add ELEVENLABS_API_KEY to video/.env.local for the ElevenLabs voice.)");
 if (args.includes("--dry")) process.exit(0);
-if (missing > 0 && !hasApiKey()) {
-  console.error("ELEVENLABS_API_KEY is not set. Export it, or put it in video/.env.local (gitignored).");
-  process.exit(1);
-}
 
 let seconds = 0;
 for (const scene of SCENES) {

@@ -7,13 +7,17 @@ description: Re-record and re-render InTune's 3–5 minute demo video (Playwrigh
 
 The pipeline lives in `video/` and drives the **live** app (https://intune-eta.vercel.app) with the demo accounts. It produces:
 - `video/out/final/intune-demo.mp4`: 1920×1080 at 30 fps, H.264 + AAC, captions burned in;
-- `intune-demo.srt` and `intune-demo.vtt`.
+- `intune-demo.srt` and `intune-demo.vtt`;
+- `YOUTUBE.md` (title, description, chapters, tags) and `intune-thumbnail.jpg` (1280×720).
 
 Related skills: `ui-demo` (the Discover → Rehearse → Record method this follows), `video-editing` (ffmpeg and voiceover craft), and `remotion-video-creation` (an optional upgrade path; not used by default).
 
 ## Prerequisites
 - ffmpeg with libass and libx264 (`brew install ffmpeg`), plus the Playwright Chromium installed by the repo.
-- `ELEVENLABS_API_KEY`: either in the environment, or in `video/.env.local` as `ELEVENLABS_API_KEY=...`. That file is gitignored. Never print, log or commit the key.
+- **Voice:** `ELEVENLABS_API_KEY`, either in the environment or in `video/.env.local` as `ELEVENLABS_API_KEY=...`. That file is gitignored; never print, log or commit the key.
+  - Without a key, the Mac's built-in voice is used (`MAC_VOICE`, default "Samantha"), so a complete video can always be made.
+  - Force either voice with `NARRATION=elevenlabs|mac`.
+  - Changing the voice changes the timing, so re-record every scene (`npm run video`).
 - Optional: `ELEVENLABS_VOICE_ID` (the default is the premade voice "Sarah") and `ELEVENLABS_MODEL_ID` (default `eleven_multilingual_v2`).
 - Re-seeding the production demo accounts needs `DATABASE_URL` for production. Pull it into the scratchpad, never into the repo: `vercel env pull <scratch>/prod.env --environment=production`, export it, then delete the file.
 

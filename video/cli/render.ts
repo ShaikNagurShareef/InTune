@@ -7,7 +7,8 @@ import { editScene, type Overlay, type SceneEdit } from "../lib/timeline";
 import { cuesFor, tidy, toAss, toSrt, toVtt, type Cue } from "../lib/subs";
 import { ffmpeg, filterPath, probe } from "../lib/ffmpeg";
 import { BAND_COLOR, FINAL_DIR, FRAME, OUTPUT, TAKES_DIR } from "../lib/paths";
-import type { Spoken } from "../lib/tts";
+import { provider, type Spoken } from "../lib/tts";
+import { chapters, renderThumbnail, writeUploadNotes } from "../lib/youtube";
 
 /**
  * Assembles the final video from the recorded takes and the narration:
@@ -124,6 +125,12 @@ await ffmpeg([
   "-shortest", "-movflags", "+faststart",
   `${base}.mp4`,
 ]);
+if (!estimate) {
+  const chapterLines = chapters(built);
+  writeUploadNotes(path.join(FINAL_DIR, "YOUTUBE.md"), chapterLines, provider() === "elevenlabs" ? "ElevenLabs" : "macOS text-to-speech");
+  await renderThumbnail(path.join(FINAL_DIR, "intune-thumbnail.jpg"));
+  console.log(`YouTube: ${path.join(FINAL_DIR, "YOUTUBE.md")} (title, description, chapters) and intune-thumbnail.jpg`);
+}
 const total = built.reduce((n, b) => n + b.duration, 0);
 console.log(`Done: ${base}.mp4 (${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, "0")}), plus .srt and .vtt`);
 console.log(await probe(`${base}.mp4`));

@@ -6,6 +6,7 @@ import { SCENES, sceneById, type Scene, type SceneCtx } from "../script";
 import { Director, signedInPage } from "../lib/actions";
 import { CURSOR_SCRIPT, Recorder } from "../lib/capture";
 import { narrationFor } from "../lib/narration";
+import { provider } from "../lib/tts";
 import { CARDS_DIR, DEVICE_SCALE, TAKES_DIR, VIEWPORT } from "../lib/paths";
 
 /**
@@ -38,6 +39,11 @@ async function cardPage(browser: Browser, card: string): Promise<Page> {
   const page = await context.newPage();
   await page.goto(pathToFileURL(path.join(CARDS_DIR, `${card}.html`)).href);
   await page.evaluate(() => document.fonts.ready);
+  // Credit the narration voice actually used.
+  await page.evaluate((credit) => {
+    const el = document.getElementById("voice-credit");
+    if (el) el.textContent = credit;
+  }, provider() === "elevenlabs" ? "ElevenLabs" : "macOS text-to-speech");
   await page.waitForTimeout(400);
   return page;
 }
