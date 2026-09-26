@@ -10,7 +10,7 @@ Built for HackGT 13 (Meta challenge: *Bringing People Closer Together with AI*) 
 
 ## Try it
 
-**Fastest:** open the live site and press **Try as Maya Chen** (or any demo person) on the sign-in page. The demo has scripted autistic ↔ autistic and autistic ↔ non-autistic conversations — see [DEMO.md](DEMO.md) for the cast and a three-minute walkthrough.
+**Fastest:** open the live site and press **Try as Maya Chen** (or any demo person) on the sign-in page. The demo has scripted autistic ↔ autistic and autistic ↔ non-autistic conversations — see [DEMO.md](DEMO.md) for the cast and a four-minute walkthrough, including a live call.
 
 Or start fresh:
 
@@ -18,6 +18,20 @@ Or start fresh:
 2. Invite someone with a private, single-use link (expires in 24 hours).
 3. Optional: open **Gemini key** and paste your own [Gemini API key](https://aistudio.google.com/apikey). Without a key, typing, phrases, sending, reading, listening, blocking and reporting all still work.
 4. Write something like *"want come dinner friday loud outside?"* and press **Help me word it**.
+
+## Live calls with an AI interpreter
+
+Every circle and direct chat has **voice** and **video** calls (1-to-1 and group), built on [LiveKit](https://livekit.io) (open-source WebRTC SFU; LiveKit Cloud's free tier in production). They're designed to be calm and to keep everyone in the conversation:
+
+- **Pre-join check:** see who's already there, preview your camera, and choose your help before joining. The camera is off for voice calls, and your own video is hidden from you by default.
+- **Live captions:** your browser turns your speech into text and shares it with the call.
+- **✨ AI interpreter (private to you):** each line someone says is shown in plain words, with *what they're asking* and *reply needed?*. Dropped names, times or "not"s are flagged by the same critical-slot check used for messages.
+- **Say it for me:** type (or tap a quick phrase) and everyone sees it and hears it read aloud. ✨ can suggest clearer wording, but you approve it before it's said.
+- **One-tap signals:** *I want to speak · Please slow down · Please say that again · I need a short break · Yes · No*.
+- **Steady screen:** tiles never reorder when someone speaks, a soft ring shows who's talking, and a gentle "reconnecting" notice appears instead of a frozen screen. Adaptive streaming, dynacast and simulcast keep weak connections smooth.
+- **Nothing is recorded:** captions, interpreter notes and typed lines travel over the call's data channel and disappear when you leave. Only the call's start and end time are stored.
+
+Why LiveKit: we compared it with Daily, Agora, 100ms and Twilio Video. It's open source (so it can be self-hosted), has a generous free tier and first-class React components and data channels, and has no per-minute lock-in. Calls are optional: without `LIVEKIT_*` env vars the call buttons are hidden and everything else works.
 
 ## How it protects the person's voice
 
@@ -31,6 +45,7 @@ Or start fresh:
 | Your key stays yours | BYOK: stored only in your browser; sent per request; never persisted, logged or checkpointed (tested) |
 | Recordings stay private | Private Blob store, verified by signature and size, erased after transcription or within 24 h |
 | Unrelated users learn nothing | Every route checks session + membership/ownership and returns the same 404 |
+| Calls stay in the circle | Join tokens are issued per call to current members only (blocks respected), scoped to one room, short-lived; nothing from a call is recorded |
 
 ## Architecture
 
@@ -44,7 +59,7 @@ Browser (Next.js client) ──► Next.js route handlers (/api/v1/*) ──► 
 ```
 
 - **Stack:** Next.js 16 (App Router), TypeScript, Tailwind 4, Drizzle ORM, Postgres (Neon), LangGraph.js with `PostgresSaver`, `@google/genai`, Vercel Blob (private), `jose` sessions.
-- **Realtime:** polling every 3 s with stable `(created_at, id)` ordering (Vercel has no websockets).
+- **Realtime:** polling every 3 s with stable `(created_at, id)` ordering for messages (Vercel has no websockets); calls use LiveKit (WebRTC media + data channels).
 - **Spec endpoints:** `POST /v1/drafts`, `PATCH /v1/drafts/{id}` (expected_version), `POST /v1/drafts/{id}/assist`, `GET /v1/jobs/{id}`, `POST /v1/jobs/{id}/clarify`, `POST /v1/drafts/{id}/approve`, `POST /v1/messages` (Idempotency-Key), `GET /v1/circles/{id}/messages` (cursor), `POST /v1/messages/{id}/simplify`, plus circles, invites, membership, phrasebook, blocks, reports, media and account deletion.
 
 ## Evaluation
@@ -64,7 +79,8 @@ npm install
 npm run db:migrate                   # app schema + LangGraph checkpoint tables
 npm run dev
 npm test                             # Vitest on in-process Postgres (PGlite), stubbed Gemini
-npm run test:e2e                     # Playwright two-browser exchange (test-only Gemini stub)
+livekit-server --dev                 # optional, for calls (brew install livekit); LIVEKIT_* in .env.example
+npm run test:e2e                     # Playwright two-browser flows incl. a call (test-only Gemini stub)
 ```
 
 ## Scope and limits

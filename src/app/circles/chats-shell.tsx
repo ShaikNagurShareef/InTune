@@ -17,6 +17,9 @@ interface Props {
 export function ChatsShell({ children, ...listProps }: Props) {
   const path = usePathname();
   const isThreadOpen = /^\/circles\/[^/]+/.test(path);
+  // Calls take the whole width, so people can focus on one thing.
+  const isCall = /^\/circles\/[^/]+\/call/.test(path);
+  if (isCall) return <div className="flex h-[calc(100dvh-var(--chrome-h)-var(--banner-h))] min-h-0">{children}</div>;
   return (
     <div className="flex h-[calc(100dvh-var(--chrome-h)-var(--banner-h))] min-h-0">
       <div

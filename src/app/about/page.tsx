@@ -11,6 +11,7 @@ const BUILT = [
   "Recipient-only “Make clearer” reading aid, device text-to-speech with speed control",
   "Phrasebook with explicit “Save this meaning”, block, report and an owner review queue",
   "Deletion of drafts, recordings and account; 24-hour retention job; content-free diagnostics",
+  "Voice and video calls (1-to-1 and group) with live captions, a private AI interpreter, “say it for me” read aloud, and one-tap signals; nothing from a call is recorded",
 ];
 
 const DEFERRED = [
@@ -21,7 +22,8 @@ const DEFERRED = [
 const LIMITS = [
   "InTune is communication support. It does not diagnose, monitor mood, assess capacity or provide therapy.",
   "English is the only language the prompts target. Other languages get original-text and manual editing.",
-  "Live updates use polling every few seconds rather than a push connection.",
+  "Messages update by polling every few seconds rather than a push connection.",
+  "Live captions use the browser’s own speech recognition (Chrome, Edge or Safari; Chrome sends audio to Google’s speech service). The interpreter works on captions, so it needs the speaker to share captions.",
   "Video is sent to Gemini as-is for speech only; InTune deletes it after processing rather than stripping metadata locally.",
   "Duration checks on the server are best-effort for some recorder formats; size limits are always enforced.",
   "Circle owners review reports for their own circles; there is no separate moderator role yet.",

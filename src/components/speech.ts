@@ -7,9 +7,10 @@ export function speechAvailable(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined";
 }
 
-export function speak(text: string, rate: number, onEnd?: () => void): boolean {
+/** Reads text aloud. By default it replaces anything being read; `queue` waits its turn instead. */
+export function speak(text: string, rate: number, onEnd?: () => void, queue = false): boolean {
   if (!speechAvailable()) return false;
-  window.speechSynthesis.cancel();
+  if (!queue) window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = rate;
   utterance.lang = "en";
@@ -19,6 +20,10 @@ export function speak(text: string, rate: number, onEnd?: () => void): boolean {
   }
   window.speechSynthesis.speak(utterance);
   return true;
+}
+
+export function stopSpeaking(): void {
+  if (speechAvailable()) window.speechSynthesis.cancel();
 }
 
 const noopSubscribe = () => () => undefined;

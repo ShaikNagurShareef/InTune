@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
-import { Search, SquarePen } from "lucide-react";
+import { PhoneCall, Search, SquarePen } from "lucide-react";
 import { fetcher } from "@/lib/client/api";
 import { shortTime } from "@/lib/client/time";
 import { Avatar } from "@/components/avatar";
@@ -46,6 +46,11 @@ function Row({ chat, quiet, active }: { chat: ChatSummary; quiet: boolean; activ
             <time dateTime={chat.lastActivity} suppressHydrationWarning className="shrink-0">{shortTime(chat.lastActivity)}</time>
           </span>
         </span>
+        {chat.live && (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sage-soft px-2 py-0.5 text-xs font-bold text-sage">
+            <PhoneCall aria-hidden="true" className="h-3.5 w-3.5" /> Live
+          </span>
+        )}
         {unread && (
           <span className="grid h-6 min-w-6 place-items-center rounded-full bg-teal px-1.5 text-xs font-bold text-on-brand">
             {chat.unread}

@@ -1,5 +1,5 @@
 import type { GeminiTransport } from "./client";
-import { CHECK_SYSTEM, COMPOSE_SYSTEM, SIMPLIFY_SYSTEM } from "./prompts";
+import { CHECK_SYSTEM, COMPOSE_SYSTEM, LIVE_INTERPRET_SYSTEM, LIVE_SAY_SYSTEM, SIMPLIFY_SYSTEM } from "./prompts";
 
 /**
  * Deterministic stand-in for Gemini used only by Playwright tests (INTUNE_E2E_GEMINI_STUB=1 outside production).
@@ -20,6 +20,12 @@ export const e2eStubTransport: GeminiTransport = {
         reply_expected: "yes",
         unclear: "",
       });
+    }
+    if (req.system === LIVE_INTERPRET_SYSTEM) {
+      return JSON.stringify({ plain: "Can we meet at 3 on Friday?", asking: "Can you meet at 3 on Friday?", reply_expected: "yes", unclear: "" });
+    }
+    if (req.system === LIVE_SAY_SYSTEM) {
+      return JSON.stringify({ text: "I need a short break. I will be back in five minutes.", added_meaning: [] });
     }
     if (req.system === CHECK_SYSTEM) {
       return JSON.stringify({ meaning_preserved: true, unsupported_additions: [], lost_meaning: [], needs_clarification: false, question: "", choices: [] });

@@ -1,5 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+/** LiveKit signalling (wss) and API (https) hosts, including LiveKit Cloud's regional hosts. */
+function liveKitSources(): string {
+  const raw = process.env.LIVEKIT_URL;
+  if (!raw) return "";
+  try {
+    const u = new URL(raw);
+    const http = u.protocol === "wss:" ? "https:" : "http:";
+    // LiveKit Cloud hands out regional hosts at runtime, so its domain is allowed as a whole; scripts stay nonce-locked.
+    const cloud = u.hostname.endsWith(".livekit.cloud") ? " wss://*.livekit.cloud https://*.livekit.cloud" : "";
+    return ` ${u.protocol}//${u.host} ${http}//${u.host}${cloud}`;
+  } catch {
+    return "";
+  }
+}
+
 /** Per-request nonce CSP for pages (SEC07). API routes return JSON only and get static headers from next.config. */
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
@@ -12,7 +27,7 @@ export function proxy(request: NextRequest) {
     "img-src 'self' blob: data:",
     "media-src 'self' blob:",
     "font-src 'self'",
-    "connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com",
+    `connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com${liveKitSources()}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

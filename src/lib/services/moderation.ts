@@ -4,6 +4,7 @@ import { blocks, circles, memberships, messages, reports, users } from "@/lib/db
 import { AppError, notFound } from "@/lib/errors";
 import { requireOwner } from "@/lib/authz";
 import { recordEvent } from "@/lib/metrics";
+import { closeDirectCall } from "./calls";
 import { getMessageForMember, tombstone } from "./messages";
 
 // Block and report never call Gemini, so they work during any AI outage (FR08, NFR08).
@@ -13,6 +14,7 @@ export async function blockUser(blockerId: string, blockedId: string): Promise<v
   const [target] = await db().select({ id: users.id }).from(users).where(eq(users.id, blockedId));
   if (!target) throw notFound();
   await db().insert(blocks).values({ blockerId, blockedId }).onConflictDoNothing();
+  await closeDirectCall(blockerId, blockedId);
 }
 
 export async function unblockUser(blockerId: string, blockedId: string): Promise<void> {

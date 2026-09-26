@@ -7,6 +7,7 @@ export interface ChatSummary {
   memberCount: number;
   otherUserId: string | null;
   otherStatus: string | null;
+  live: boolean;
   last: { text: string | null; senderName: string; mine: boolean; at: string } | null;
   lastActivity: string;
 }

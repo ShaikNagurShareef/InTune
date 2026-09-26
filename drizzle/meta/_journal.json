@@ -43,6 +43,20 @@
       "when": 1790421327589,
       "tag": "0005_sensory_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790435115251,
+      "tag": "0006_live_calls",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790436809655,
+      "tag": "0007_call_activity",
+      "breakpoints": true
     }
   ]
 }

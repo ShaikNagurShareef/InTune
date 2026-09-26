@@ -7,6 +7,7 @@ import { getCircle } from "@/lib/services/circles";
 import { listMessages } from "@/lib/services/messages";
 import { listPhrases } from "@/lib/services/phrasebook";
 import { storageMode } from "@/lib/media/storage";
+import { callsEnabled } from "@/lib/calls/livekit";
 import { CircleView } from "./circle-view";
 
 export const metadata: Metadata = { title: "Circle" };
@@ -31,6 +32,7 @@ export default async function CirclePage({ params }: { params: Promise<{ id: str
       prefs={{ inputMode: prefs.inputMode, audioRate: prefs.audioRate, autoTranslate: prefs.autoTranslate }}
       phrases={phrases.map((p) => ({ id: p.id, phrase: p.phrase, meaning: p.meaning }))}
       uploadMode={storageMode()}
+      callsEnabled={callsEnabled()}
     />
   );
 }

@@ -308,3 +308,24 @@ export const rateLimits = pgTable("rate_limits", {
   windowStart: ts("window_start").notNull(),
   count: integer("count").notNull().default(0),
 });
+
+/** Live audio/video calls in a circle or direct chat. Media flows through LiveKit; nothing is recorded. */
+export const calls = pgTable(
+  "calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    circleId: uuid("circle_id")
+      .notNull()
+      .references(() => circles.id, { onDelete: "cascade" }),
+    roomName: text("room_name").notNull().unique(),
+    kind: text("kind").notNull().default("audio"),
+    startedBy: uuid("started_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startedAt: createdAt(),
+    /** Last time someone got a join token or was seen in the room; the empty-room grace period counts from here. */
+    lastActiveAt: timestamp("last_active_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: ts("ended_at"),
+  },
+  (t) => [index("calls_circle_active").on(t.circleId, t.endedAt)],
+);

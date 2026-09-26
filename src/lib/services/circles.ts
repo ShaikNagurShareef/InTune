@@ -4,6 +4,7 @@ import { blocks, circles, memberships, messages, preferences, users } from "@/li
 import type { CommCard } from "@/lib/social";
 import { AppError } from "@/lib/errors";
 import { requireMember, requireOwner } from "@/lib/authz";
+import { closeCircleCalls, liveCircleIds, removeFromCall } from "./calls";
 
 export const MEMBER_CAP = 20;
 
@@ -33,6 +34,8 @@ export interface CircleSummary {
   memberCount: number;
   otherUserId: string | null;
   otherStatus: string | null;
+  /** A call is in progress in this chat. */
+  live: boolean;
   last: LastMessage | null;
   lastActivity: string;
 }
@@ -102,6 +105,7 @@ export async function listCircles(userId: string): Promise<CircleSummary[]> {
     .where(and(eq(memberships.userId, userId), isNull(memberships.removedAt), isNull(circles.deletedAt)))
     .orderBy(asc(circles.name));
   const hidden = await blockedIds(userId);
+  const live = await liveCircleIds(userId);
   const summaries = await Promise.all(
     rows.map(async (row): Promise<CircleSummary | null> => {
       const other = row.kind === "direct" ? await otherMember(userId, row.id) : null;
@@ -129,6 +133,7 @@ export async function listCircles(userId: string): Promise<CircleSummary[]> {
         memberCount: await activeMemberCount(row.id),
         otherUserId: other?.id ?? null,
         otherStatus: other?.status ?? null,
+        live: live.has(row.id),
         last,
         lastActivity: last?.at ?? new Date(row.createdAt).toISOString(),
       };
@@ -200,6 +205,7 @@ export async function removeMember(ownerId: string, circleId: string, memberId: 
     .where(and(eq(memberships.circleId, circleId), eq(memberships.userId, memberId), isNull(memberships.removedAt)))
     .returning({ id: memberships.id });
   if (!updated.length) throw new AppError("not_found", "This person is not in the circle.");
+  await removeFromCall(circleId, [memberId]);
 }
 
 export async function leaveCircle(userId: string, circleId: string): Promise<void> {
@@ -215,6 +221,7 @@ export async function leaveCircle(userId: string, circleId: string): Promise<voi
     .update(memberships)
     .set({ removedAt: new Date() })
     .where(and(eq(memberships.circleId, circleId), eq(memberships.userId, userId)));
+  await removeFromCall(circleId, [userId]);
 }
 
 export async function transferOwnership(ownerId: string, circleId: string, newOwnerId: string): Promise<void> {
@@ -238,6 +245,7 @@ export async function transferOwnership(ownerId: string, circleId: string, newOw
 export async function deleteCircle(ownerId: string, circleId: string): Promise<void> {
   await requireOwner(ownerId, circleId);
   await db().update(circles).set({ deletedAt: new Date() }).where(eq(circles.id, circleId));
+  await closeCircleCalls(circleId);
 }
 
 export async function activeMemberCount(circleId: string, conn: Db = db()): Promise<number> {
