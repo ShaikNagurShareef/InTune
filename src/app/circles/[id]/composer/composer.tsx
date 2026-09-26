@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, newIdempotencyKey } from "@/lib/client/api";
 import { setMediaConsent, useHasGeminiKey, useMediaConsent } from "@/lib/client/byok";
+import { CheckCircle2, CircleHelp, Eraser, FileAudio, LayoutGrid, Loader2, Mic, Pencil, Reply, Sparkles, Undo2, Video, X } from "lucide-react";
 import { Button, Notice, inputClass } from "@/components/ui";
 import type { CircleInfo, Me, PhraseLite, ReplyTarget } from "../types";
 import { Recorder, type Capture } from "./recorder";
 import { ReviewPanel } from "./review-panel";
 import { SymbolBoard } from "./symbol-board";
-import { ModeBar, QuickReplies, ToneChips } from "./composer-parts";
+import { ChosenTones, ModeBar, QuickReplies, TonePicker, WordingMenu } from "./composer-parts";
 import { uploadCapture, type UploadMode } from "./upload";
 import type { Draft, InputMode, JobView, Pending, WordingMode } from "./types";
 
@@ -26,11 +27,6 @@ interface Props {
   onSent: () => void;
 }
 
-const WORDING: { value: WordingMode; label: string }[] = [
-  { value: "keep", label: "Keep my wording" },
-  { value: "clearer", label: "Make clearer" },
-  { value: "shorter", label: "Make shorter" },
-];
 const JOB_POLL_MS = 1000;
 const MANUAL_REASONS: Record<string, string> = {
   no_speech: "InTune couldn’t hear clear words — only silence or background sound. Try again, or type or tap phrases.",
@@ -181,7 +177,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
     }
   };
 
-  const startAssist = async () => {
+  const startAssist = async (chosen: WordingMode = wording) => {
     setError(null);
     setSentNote(null);
     setJob(null);
@@ -218,7 +214,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
         created,
         (s) =>
           api<JobView>(`/api/v1/drafts/${created.id}/assist`, {
-            body: { expected_version: created.version, wording_mode: wording },
+            body: { expected_version: created.version, wording_mode: chosen },
             gemini: true,
             signal: s,
           }),
@@ -363,204 +359,208 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
   };
 
   const needsKeyNotice = !hasKey && (
-    <p className="text-sm text-ink-2">
-      Wording help is off on this device ·{" "}
+    <span>
+      AI help is off ·{" "}
       <Link href="/settings" className="font-bold text-teal underline underline-offset-2">add your Gemini key</Link>
-    </p>
+    </span>
   );
 
+  const startWith = (next: WordingMode) => {
+    chooseWording(next);
+    void startAssist(next);
+  };
+  const cardClass = "rounded-3xl border border-line bg-card p-4 shadow-[var(--shadow)]";
+
   return (
-    <section aria-labelledby="composer-heading" className="rounded-2xl border border-line bg-card p-3 shadow-[var(--shadow)]">
+    <section aria-labelledby="composer-heading" className="border-t border-line bg-paper px-2 pb-2 pt-2 sm:px-4 sm:pb-3">
       <h2 id="composer-heading" className="sr-only">Write a message</h2>
-      {replyTo && stage === "compose" && (
-        <p className="mb-3 flex items-center gap-2 rounded-lg bg-paper-2 px-3 py-2 text-sm">
-          <span className="flex-1">Replying to {replyTo.senderName}: “{replyTo.snippet}”</span>
-          <Button tone="ghost" className="text-sm" onClick={onClearReply}>✕ Not a reply</Button>
+      {error && <div className="mb-2"><Notice tone="warn">{error}</Notice></div>}
+      {sentNote && stage === "compose" && (
+        <p role="status" className="mb-1 flex items-center gap-1 px-2 text-xs font-bold text-sage">
+          <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" /> {sentNote}
         </p>
       )}
-      {sentNote && stage === "compose" && <p role="status" className="mb-3 font-bold text-sage">✓ {sentNote}</p>}
-      {error && <div className="mb-3"><Notice tone="warn">{error}</Notice></div>}
 
       {stage === "compose" && (
         <div className="space-y-2">
-          {mode === "symbols" && <SymbolBoard phrases={phrases} onPick={pickPhrase} />}
+          {replyTo && (
+            <div className="flex items-center gap-2 rounded-2xl bg-paper-2 px-3 py-2 text-sm">
+              <Reply aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-2" />
+              <span className="min-w-0 flex-1 truncate">
+                Replying to <strong>{replyTo.senderName}</strong>: {replyTo.snippet}
+              </span>
+              <button type="button" onClick={onClearReply} aria-label="Not a reply" className="grid h-9 w-9 place-items-center rounded-full hover:bg-paper">
+                <X aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
+          )}
 
-          {isMedia ? (
-            <div className="space-y-3 rounded-2xl border border-line bg-paper p-3">
-              <ModeBar mode={mode} onChange={switchMode} />
+          {mode === "symbols" && (
+            <div className={cardClass}>
+              <div className="mb-3 flex items-center gap-2">
+                <LayoutGrid aria-hidden="true" className="h-4 w-4" />
+                <h3 className="font-extrabold">Phrases</h3>
+                <span className="text-xs text-ink-2">Tap to add. You can edit before sending.</span>
+                <button type="button" onClick={() => switchMode("type")} aria-label="Close phrases" className="ml-auto grid h-9 w-9 place-items-center rounded-full hover:bg-paper-2">
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </button>
+              </div>
+              <SymbolBoard phrases={phrases} onPick={pickPhrase} />
+              <div className="mt-2 flex gap-2">
+                <Button tone="ghost" className="text-sm" onClick={undo} disabled={!history.length}><Undo2 aria-hidden="true" className="h-4 w-4" /> Undo</Button>
+                <Button tone="ghost" className="text-sm" onClick={() => { setHistory((h) => [...h, text]); setText(""); }} disabled={!text}><Eraser aria-hidden="true" className="h-4 w-4" /> Clear</Button>
+              </div>
+            </div>
+          )}
+
+          {isMedia && (
+            <div className={cardClass}>
+              <div className="mb-3 flex items-center gap-2">
+                {mode === "speak" ? <Mic aria-hidden="true" className="h-4 w-4" /> : <Video aria-hidden="true" className="h-4 w-4" />}
+                <h3 className="font-extrabold">{mode === "speak" ? "Voice message" : "Video message"}</h3>
+                <button type="button" onClick={() => switchMode("type")} aria-label="Back to typing" className="ml-auto grid h-9 w-9 place-items-center rounded-full hover:bg-paper-2">
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </button>
+              </div>
               {hasKey ? (
-                <>
-                  <Recorder
-                    key={mode}
-                    kind={mode === "speak" ? "audio" : "video"}
-                    onCapture={setCapture}
-                    onPermissionDenied={() => switchMode("type")}
-                  />
+                <div className="space-y-3">
+                  <Recorder key={mode} kind={mode === "speak" ? "audio" : "video"} onCapture={setCapture} onPermissionDenied={() => switchMode("type")} />
                   <label className="flex items-start gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={consent}
-                      onChange={(e) => setMediaConsent(e.target.checked)}
-                      className="mt-1 h-5 w-5"
-                    />
-                    <span>
-                      I understand my recording is sent to Google Gemini with my key to turn it into words. InTune deletes
-                      the recording after processing and never shares it with the circle.
-                    </span>
+                    <input type="checkbox" checked={consent} onChange={(e) => setMediaConsent(e.target.checked)} className="mt-1 h-5 w-5" />
+                    <span>My recording is sent to Google Gemini with my key to turn it into words. InTune deletes it afterwards and never shares it with the circle.</span>
                   </label>
-                </>
+                  <WordingMenu current={wording} onPick={startWith} disabled={!capture || !consent} label="Turn into words" primary />
+                </div>
               ) : (
                 needsKeyNotice
               )}
             </div>
-          ) : (
-            <div className="rounded-2xl border border-line bg-paper transition focus-within:border-teal focus-within:shadow-[var(--shadow)]">
+          )}
+
+          {!isMedia && !text && <QuickReplies phrases={phrases} onPick={pickPhrase} />}
+          {tones.length > 0 && <ChosenTones value={tones} onChange={setTones} />}
+
+          {!isMedia && (
+            <div className="flex items-end gap-1 rounded-[28px] border border-line bg-paper py-1 pl-1 pr-2 transition focus-within:border-ink-2">
+              <TonePicker value={tones} onChange={setTones} />
               <label htmlFor="compose-text" className="sr-only">Your message</label>
               <textarea
                 id="compose-text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                rows={2}
+                rows={1}
                 maxLength={2000}
-                placeholder={mode === "symbols" ? "Tap phrases above, then edit here" : "Say it however it comes…"}
-                className="block max-h-40 min-h-12 w-full resize-none bg-transparent px-4 pt-3 text-lg outline-none [field-sizing:content]"
+                placeholder={mode === "symbols" ? "Tap phrases, then edit…" : "Message…"}
+                className="font-read block max-h-40 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-[1.0625rem] outline-none placeholder:text-ink-2 [field-sizing:content]"
               />
-              <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+              {text.trim() ? (
+                <>
+                  {hasKey && <WordingMenu current={wording} onPick={startWith} label="Help me word it" />}
+                  <button
+                    type="button"
+                    onClick={sendManual}
+                    disabled={isSending}
+                    className="min-h-11 rounded-full px-3 font-extrabold text-teal hover:bg-teal-soft disabled:opacity-50"
+                  >
+                    {isSending ? "Sending…" : "Send"}
+                  </button>
+                </>
+              ) : (
                 <ModeBar mode={mode} onChange={switchMode} />
-                {mode === "symbols" && (
-                  <>
-                    <Button tone="ghost" className="text-sm" onClick={undo} disabled={!history.length}>Undo</Button>
-                    <Button tone="ghost" className="text-sm" onClick={() => { setHistory((h) => [...h, text]); setText(""); }} disabled={!text}>Clear</Button>
-                  </>
-                )}
-                <span className={`ml-auto px-2 text-xs ${text.length > 1800 ? "font-bold text-clay" : "text-ink-2"}`}>
-                  {text.length > 0 ? `${text.length}/2000` : ""}
-                </span>
-              </div>
+              )}
             </div>
           )}
 
-          {!isMedia && !text && (
-            <QuickReplies phrases={phrases} onPick={pickPhrase} />
-          )}
-
-          <ToneChips value={tones} onChange={setTones} />
-
-          <div className="flex flex-wrap items-center gap-2">
-            {!isMedia && (
-              <Button tone="primary" onClick={sendManual} disabled={!text.trim() || isSending}>
-                {isSending ? "Sending… not sent yet" : "Send"}
-              </Button>
-            )}
-            {hasKey && (
-              <span className="inline-flex flex-wrap items-center gap-1">
-                <Button
-                  tone={isMedia ? "primary" : "quiet"}
-                  onClick={startAssist}
-                  disabled={isMedia ? !capture || !consent : !text.trim()}
-                >
-                  {isMedia ? "Turn into words" : "✨ Help me word it"}
-                </Button>
-                <label className="inline-flex items-center">
-                  <span className="sr-only">Wording help style</span>
-                  <select
-                    value={wording}
-                    onChange={(e) => chooseWording(e.target.value as WordingMode)}
-                    className="min-h-11 rounded-xl border border-line bg-card px-2 text-sm text-ink-2"
-                  >
-                    {WORDING.map((w) => <option key={w.value} value={w.value}>{w.label}</option>)}
-                  </select>
-                </label>
-              </span>
-            )}
-            {!isMedia && (
-              <span className="ml-auto truncate text-xs text-ink-2">To: {memberNames.join(", ")}</span>
-            )}
+          <div className="flex items-center gap-2 px-2 text-xs text-ink-2">
+            {!isMedia && text.length > 1500 && <span className={text.length > 1900 ? "font-bold text-clay" : ""}>{text.length}/2000</span>}
+            {!hasKey && !isMedia && needsKeyNotice}
+            <span className="ml-auto truncate">To: {memberNames.join(", ")}</span>
           </div>
-          {!isMedia && !hasKey && needsKeyNotice}
           {sendError && <Notice tone="warn">{sendError} <button className="font-bold underline" onClick={sendManual}>Retry</button></Notice>}
         </div>
       )}
 
       {stage === "processing" && (
-        <div className="space-y-3" role="status" aria-live="polite">
-          <p className="flex items-center gap-3 text-lg font-bold">
-            <span aria-hidden="true" className="h-3 w-3 animate-pulse rounded-full bg-teal" />
-            {stageLabel}…
-          </p>
-          {!isMedia && text && <p className="text-ink-2">Your words: “{text}”</p>}
+        <div className={`${cardClass} flex items-center gap-3`} role="status" aria-live="polite">
+          <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-teal" />
+          <div className="min-w-0 flex-1">
+            <p className="font-extrabold">{stageLabel}…</p>
+            {!isMedia && text && <p className="font-read truncate text-sm text-ink-2">Your words: “{text}”</p>}
+          </div>
           <Button onClick={cancel}>Cancel</Button>
         </div>
       )}
 
       {stage === "transcript" && pending?.kind === "transcript" && (
-        <div className="space-y-3">
-          <h3 className="font-display text-2xl font-semibold">Is this what you said?</h3>
+        <div className={`${cardClass} space-y-3`}>
+          <div className="flex items-center gap-2">
+            <FileAudio aria-hidden="true" className="h-5 w-5 text-teal" />
+            <h3 className="text-lg font-extrabold">Is this what you said?</h3>
+          </div>
           <label className="block">
-            <span className="mb-1 block font-bold">Words from your recording — fix anything that’s wrong</span>
-            <textarea value={transcriptEdit} onChange={(e) => setTranscriptEdit(e.target.value)} rows={3} maxLength={2000} className={`${inputClass} text-lg`} />
+            <span className="mb-1 block text-sm text-ink-2">Fix anything that’s wrong before any rewording.</span>
+            <textarea value={transcriptEdit} onChange={(e) => setTranscriptEdit(e.target.value)} rows={3} maxLength={2000} className={`${inputClass} font-read text-lg`} />
           </label>
           {pending.uncertainSpans.length > 0 && (
             <Notice tone="uncertain" title="Not sure about">
               {pending.uncertainSpans.map((s) => `“${s.text}”`).join(", ")}
             </Notice>
           )}
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="block">
-              <span className="mb-1 block text-sm font-bold">Wording help</span>
-              <select value={wording} onChange={(e) => setWording(e.target.value as WordingMode)} className={`${inputClass} w-auto`}>
-                {WORDING.map((w) => <option key={w.value} value={w.value}>{w.label}</option>)}
-              </select>
-            </label>
-            <Button tone="primary" disabled={!transcriptEdit.trim()} onClick={() => resume({ transcript: transcriptEdit, wording_mode: wording })}>
-              Help me word it
+          <div className="flex flex-wrap gap-2">
+            <Button tone="primary" disabled={!transcriptEdit.trim()} onClick={() => reviewManually(transcriptEdit)}>Use these words</Button>
+            <Button disabled={!transcriptEdit.trim()} onClick={() => resume({ transcript: transcriptEdit, wording_mode: wording })}>
+              <Sparkles aria-hidden="true" className="h-4 w-4" /> Help me word it
             </Button>
-            <Button disabled={!transcriptEdit.trim()} onClick={() => reviewManually(transcriptEdit)}>Use these words</Button>
             <Button tone="ghost" onClick={cancel}>Record again</Button>
           </div>
         </div>
       )}
 
       {stage === "clarify" && pending?.kind === "clarify" && (
-        <div className="space-y-4">
-          <p className="text-sm font-bold uppercase tracking-wider text-amber-ink">One question, so nothing is guessed</p>
-          <h3 className="font-display text-2xl font-semibold">{pending.question}</h3>
+        <div className={`${cardClass} space-y-4`}>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-ink">
+            <CircleHelp aria-hidden="true" className="h-4 w-4" /> One question, so nothing is guessed
+          </p>
+          <h3 className="text-xl font-extrabold">{pending.question}</h3>
           <div className="flex flex-wrap gap-2">
             {pending.choices.map((c) => (
-              <Button key={c} onClick={() => resume({ answer: c })}>{c}</Button>
+              <button key={c} type="button" onClick={() => resume({ answer: c })} className="min-h-11 rounded-full border-2 border-ink px-4 font-bold hover:bg-ink hover:text-paper">
+                {c}
+              </button>
             ))}
-            <Button tone="ghost" onClick={() => setOtherAnswer("")}>Something else</Button>
+            <button type="button" onClick={() => setOtherAnswer("")} className="min-h-11 rounded-full border-2 border-dashed border-line px-4 font-bold text-ink-2 hover:border-ink-2">
+              Something else
+            </button>
           </div>
           {otherAnswer !== null && (
-            <form
-              onSubmit={(e) => { e.preventDefault(); if (otherAnswer.trim()) resume({ answer: otherAnswer }); }}
-              className="flex flex-wrap gap-2"
-            >
+            <form onSubmit={(e) => { e.preventDefault(); if (otherAnswer.trim()) resume({ answer: otherAnswer }); }} className="flex gap-2">
               <label className="sr-only" htmlFor="other-answer">Your answer</label>
               <input id="other-answer" value={otherAnswer} onChange={(e) => setOtherAnswer(e.target.value)} maxLength={300} className={`${inputClass} flex-1`} autoFocus />
               <Button tone="primary" type="submit" disabled={!otherAnswer.trim()}>Answer</Button>
             </form>
           )}
           <div className="flex flex-wrap gap-2 border-t border-line pt-3">
-            <Button tone="ghost" onClick={() => reviewManually()}>I’ll edit it myself</Button>
+            <Button tone="ghost" onClick={() => reviewManually()}><Pencil aria-hidden="true" className="h-4 w-4" /> I’ll edit it myself</Button>
             <Button tone="ghost" onClick={cancel}>Cancel</Button>
           </div>
         </div>
       )}
 
       {stage === "review" && draft && (
-        <ReviewPanel
-          key={draft.id}
-          draft={draft}
-          circleName={circle.name}
-          memberNames={memberNames}
-          replyLabel={draft.replyToId ? (replyTo?.id === draft.replyToId ? replyTo.senderName : "an earlier message") : null}
-          isSending={isSending}
-          sendError={sendError}
-          onDraftChange={setDraft}
-          onApproveAndSend={approveAndSend}
-          onBack={() => { setStage("compose"); if (!isMedia) setText(draft.sourceText || text); }}
-        />
+        <div className={cardClass}>
+          <ReviewPanel
+            key={draft.id}
+            draft={draft}
+            circleName={circle.name}
+            memberNames={memberNames}
+            replyLabel={draft.replyToId ? (replyTo?.id === draft.replyToId ? replyTo.senderName : "an earlier message") : null}
+            isSending={isSending}
+            sendError={sendError}
+            onDraftChange={setDraft}
+            onApproveAndSend={approveAndSend}
+            onBack={() => { setStage("compose"); if (!isMedia) setText(draft.sourceText || text); }}
+          />
+        </div>
       )}
     </section>
   );

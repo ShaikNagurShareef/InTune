@@ -1,13 +1,13 @@
+import { AlertTriangle, CheckCircle2, CircleHelp, Info, type LucideIcon } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Tone = "primary" | "quiet" | "danger" | "ghost";
 
 const TONES: Record<Tone, string> = {
-  primary:
-    "bg-teal text-teal-ink shadow-[var(--shadow)] hover:brightness-110 active:translate-y-px disabled:opacity-50",
-  quiet: "bg-card text-ink border border-line hover:border-ink-2 active:translate-y-px disabled:opacity-50",
-  danger: "bg-card text-clay border border-clay/50 hover:bg-clay-soft active:translate-y-px disabled:opacity-50",
-  ghost: "text-ink-2 hover:text-ink hover:bg-paper-2 disabled:opacity-50",
+  primary: "bg-brand text-white shadow-[var(--shadow)] hover:brightness-110 active:scale-[0.98] disabled:opacity-40",
+  quiet: "bg-paper-2 text-ink hover:brightness-95 active:scale-[0.98] disabled:opacity-40",
+  danger: "text-clay border border-clay/40 hover:bg-clay-soft active:scale-[0.98] disabled:opacity-40",
+  ghost: "text-ink-2 hover:text-ink hover:bg-paper-2 disabled:opacity-40",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -19,7 +19,7 @@ export function Button({ tone = "quiet", className = "", type = "button", ...res
   return (
     <button
       type={type}
-      className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-4 font-bold transition ${TONES[tone]} ${className}`}
+      className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition ${TONES[tone]} ${className}`}
       {...rest}
     />
   );
@@ -27,18 +27,22 @@ export function Button({ tone = "quiet", className = "", type = "button", ...res
 
 type NoticeTone = "info" | "warn" | "ok" | "uncertain";
 const NOTICE: Record<NoticeTone, string> = {
-  info: "bg-teal-soft text-ink border-teal/30",
-  warn: "bg-clay-soft text-ink border-clay/40",
-  ok: "bg-sage-soft text-ink border-sage/40",
-  uncertain: "bg-amber-soft text-amber-ink border-amber-ink/30",
+  info: "bg-teal-soft text-ink border-transparent",
+  warn: "bg-clay-soft text-ink border-transparent",
+  ok: "bg-sage-soft text-ink border-transparent",
+  uncertain: "bg-amber-soft text-amber-ink border-transparent",
 };
-const ICON: Record<NoticeTone, string> = { info: "ℹ️", warn: "⚠️", ok: "✓", uncertain: "?" };
+const ICON: Record<NoticeTone, LucideIcon> = { info: Info, warn: AlertTriangle, ok: CheckCircle2, uncertain: CircleHelp };
+const ICON_COLOR: Record<NoticeTone, string> = { info: "text-teal", warn: "text-clay", ok: "text-sage", uncertain: "text-amber-ink" };
 
 export function Notice({ tone = "info", title, children }: { tone?: NoticeTone; title?: string; children?: ReactNode }) {
   return (
-    <div role={tone === "warn" ? "alert" : "status"} className={`rounded-xl border px-4 py-3 ${NOTICE[tone]}`}>
-      <p className="flex gap-2">
-        <span aria-hidden="true" className="font-bold">{ICON[tone]}</span>
+    <div role={tone === "warn" ? "alert" : "status"} className={`rounded-2xl border px-4 py-3 text-sm ${NOTICE[tone]}`}>
+      <p className="flex gap-2.5">
+        {(() => {
+          const Icon = ICON[tone];
+          return <Icon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${ICON_COLOR[tone]}`} />;
+        })()}
         <span>
           {title && <strong className="block">{title}</strong>}
           {children}
@@ -62,11 +66,11 @@ export function PageTitle({ eyebrow, title, children }: { eyebrow?: string; titl
   return (
     <header className="mb-8">
       {eyebrow && <p className="mb-1 text-sm font-bold uppercase tracking-[0.14em] text-teal">{eyebrow}</p>}
-      <h1 className="font-display text-4xl font-semibold leading-tight sm:text-5xl">{title}</h1>
+      <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">{title}</h1>
       {children && <div className="mt-3 max-w-2xl text-lg text-ink-2">{children}</div>}
     </header>
   );
 }
 
 export const inputClass =
-  "w-full min-h-11 rounded-xl border border-line bg-card px-3 py-2 text-base text-ink placeholder:text-ink-2/70 focus:border-teal";
+  "w-full min-h-11 rounded-xl border border-line bg-paper-2 px-3 py-2 text-base text-ink outline-none placeholder:text-ink-2/70 focus:border-teal focus:bg-card";

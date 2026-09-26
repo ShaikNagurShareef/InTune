@@ -1,22 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 import { useHasGeminiKey } from "@/lib/client/byok";
 
-/** Tells the person whether wording help is available on this device. */
+/** Whether wording help is available on this device. */
 export function KeyStatus() {
   const hasKey = useHasGeminiKey();
   return (
     <Link
       href="/settings"
-      className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap gap-1.5 rounded-full border px-3 text-xs font-bold ${
-        hasKey ? "border-sage/40 bg-sage-soft" : "border-line bg-paper-2 text-ink-2"
+      className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-bold ${
+        hasKey ? "bg-teal-soft text-teal" : "bg-paper-2 text-ink-2"
       }`}
     >
-      <span aria-hidden="true" className={`h-2 w-2 rounded-full ${hasKey ? "bg-sage" : "bg-ink-2/40"}`} />
-      <span className="hidden sm:inline">Wording help&nbsp;</span>
-      {hasKey ? "on" : "off"}
-      <span className="sr-only sm:hidden"> (wording help)</span>
+      <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+      {hasKey ? "AI help on" : "AI help off"}
+      <span className="sr-only"> (wording help; open settings)</span>
     </Link>
   );
 }

@@ -1,3 +1,4 @@
+import { HeartHandshake } from "lucide-react";
 import { statusInfo } from "@/lib/social";
 
 interface CardProps {
@@ -11,7 +12,7 @@ export function CommCardView({ name, card, status }: CardProps) {
   const s = statusInfo(status ?? "none");
   if (!card && s.id === "none") return null;
   return (
-    <div className="space-y-2 rounded-xl border border-teal/25 bg-teal-soft/50 p-3">
+    <div className="space-y-2 rounded-2xl border border-line bg-paper-2/70 p-4">
       {s.id !== "none" && (
         <p className="text-sm font-bold">
           <span aria-hidden="true">{s.icon} </span>
@@ -20,11 +21,13 @@ export function CommCardView({ name, card, status }: CardProps) {
       )}
       {card && (
         <>
-          <p className="text-xs font-bold uppercase tracking-wider text-teal">How to talk with {name}</p>
+          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-teal">
+            <HeartHandshake aria-hidden="true" className="h-4 w-4" /> How to talk with {name}
+          </p>
           {card.chips.length > 0 && (
             <ul className="flex flex-wrap gap-1.5">
               {card.chips.map((c) => (
-                <li key={c} className="rounded-full bg-card px-2.5 py-1 text-sm">{c}</li>
+                <li key={c} className="rounded-full border border-line bg-card px-3 py-1 text-sm font-semibold">{c}</li>
               ))}
             </ul>
           )}

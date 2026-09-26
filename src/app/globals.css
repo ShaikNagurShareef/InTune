@@ -1,46 +1,57 @@
 @import "tailwindcss";
 
-/* InTune palette: warm paper and ink, with semantic accents.
-   teal = act / confirm, clay = attention / meaning changed, amber = uncertain, sage = done. */
+/*
+ * InTune design tokens — Instagram-Direct-inspired, tuned for calm.
+ * Neutral white/black canvas; the brand gradient is reserved for avatars rings, your own
+ * bubbles and the primary action. Semantic names: teal = accent/act, clay = danger/attention,
+ * amber = uncertain/status, sage = success. (Names kept from v1 so every surface re-themes.)
+ */
 :root {
-  --paper: #fbf7f0;
-  --paper-2: #f3ece0;
-  --card: #fffdf8;
-  --ink: #1f2a2e;
-  --ink-2: #4a5559;
-  --line: #e4dccd;
-  --teal: #1f6f6b;
+  --paper: #ffffff;
+  --paper-2: #f3f3f6;
+  --card: #ffffff;
+  --ink: #0f1115;
+  --ink-2: #686d78;
+  --line: #e8e8ee;
+  --teal: #5b4ce0;
   --teal-ink: #ffffff;
-  --teal-soft: #d9ece9;
-  --clay: #b0472d;
-  --clay-soft: #f7e1d9;
-  --amber-soft: #fbeabf;
-  --amber-ink: #6b4a00;
-  --sage: #3d7a4e;
-  --sage-soft: #e0efe2;
-  --focus: #1f6f6b;
-  --shadow: 0 1px 0 rgba(31, 42, 46, 0.06), 0 8px 24px -12px rgba(31, 42, 46, 0.18);
+  --teal-soft: #efedff;
+  --clay: #d92d5c;
+  --clay-soft: #fdecf1;
+  --amber-soft: #fff4dc;
+  --amber-ink: #7a4d00;
+  --sage: #149a52;
+  --sage-soft: #e5f6ec;
+  --bubble-theirs: #efeff4;
+  --focus: #5b4ce0;
+  --brand: linear-gradient(135deg, #4f5bd5 0%, #962fbf 55%, #d62976 100%);
+  --brand-soft: linear-gradient(135deg, rgba(79, 91, 213, 0.1), rgba(214, 41, 118, 0.1));
+  --ring: conic-gradient(from 210deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75);
+  --shadow: 0 1px 2px rgba(15, 17, 21, 0.06), 0 8px 24px -12px rgba(15, 17, 21, 0.16);
+  --shadow-lg: 0 24px 48px -16px rgba(15, 17, 21, 0.28);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #171512;
-    --paper-2: #211e1a;
-    --card: #1d1a16;
-    --ink: #f1ebe0;
-    --ink-2: #bfb6a7;
-    --line: #3a342c;
-    --teal: #5fb3ac;
-    --teal-ink: #0f1f1e;
-    --teal-soft: #1d3533;
-    --clay: #e58b6f;
-    --clay-soft: #3b231b;
-    --amber-soft: #3d3218;
-    --amber-ink: #f3d68c;
-    --sage: #8cc79a;
-    --sage-soft: #1e3123;
-    --focus: #8fd6cf;
-    --shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 10px 30px -14px rgba(0, 0, 0, 0.7);
+    --paper: #000000;
+    --paper-2: #1a1a1d;
+    --card: #0f0f11;
+    --ink: #f5f5f7;
+    --ink-2: #a3a3ad;
+    --line: #26262b;
+    --teal: #9d92ff;
+    --teal-ink: #0b0b10;
+    --teal-soft: #1f1b3d;
+    --clay: #ff6b93;
+    --clay-soft: #3a1422;
+    --amber-soft: #3a2c0c;
+    --amber-ink: #ffd88a;
+    --sage: #5bd08e;
+    --sage-soft: #0f2a1b;
+    --bubble-theirs: #26262b;
+    --focus: #b3aaff;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px -14px rgba(0, 0, 0, 0.8);
+    --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.9);
   }
 }
 
@@ -60,8 +71,9 @@
   --color-amber-ink: var(--amber-ink);
   --color-sage: var(--sage);
   --color-sage-soft: var(--sage-soft);
-  --font-sans: var(--font-atkinson);
-  --font-display: var(--font-fraunces);
+  --color-bubble: var(--bubble-theirs);
+  --font-sans: var(--font-jakarta);
+  --font-read: var(--font-atkinson);
 }
 
 /* Reading-size preference (FR02) scales the whole interface; tested for reflow at 320px and 200% zoom. */
@@ -78,26 +90,56 @@ html[data-text-size="xl"] {
 body {
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-atkinson), system-ui, sans-serif;
-  line-height: 1.55;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Headings: tight, confident sans (was a serif in v1). */
 .font-display {
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-optical-sizing: auto;
-  letter-spacing: -0.01em;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
-/* Paper grain for atmosphere; purely decorative. */
+/* Message text uses Atkinson Hyperlegible, designed for legibility. */
+.font-read {
+  font-family: var(--font-atkinson), var(--font-jakarta), system-ui, sans-serif;
+}
+
+.bg-brand {
+  background-image: var(--brand);
+}
+.bg-brand-soft {
+  background-image: var(--brand-soft);
+}
+.text-brand {
+  background-image: var(--brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* Story-style ring around an avatar. */
+.ring-story {
+  background-image: var(--ring);
+}
+
+/* Kept for compatibility; now a no-op texture. */
 .grain {
-  background-image: radial-gradient(rgba(31, 42, 46, 0.035) 1px, transparent 1px);
-  background-size: 3px 3px;
+  background-image: none;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 :focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -121,4 +163,18 @@ html[data-reduce-motion="true"] *::after {
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+}
+
+/* Height of app chrome around full-height screens: mobile top bar + bottom tabs; none on desktop (side rail). */
+:root {
+  --chrome-h: 7.5rem;
+  --banner-h: 0px;
+}
+html:has(#demo-banner) {
+  --banner-h: 1.75rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --chrome-h: 0px;
+  }
 }

@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Atkinson_Hyperlegible, Fraunces } from "next/font/google";
+import { Atkinson_Hyperlegible, Plus_Jakarta_Sans } from "next/font/google";
 import { AppHeader } from "@/components/app-header";
+import { getServerUser } from "@/lib/auth/server-session";
 import "./globals.css";
 
 const body = Atkinson_Hyperlegible({ variable: "--font-atkinson", subsets: ["latin"], weight: ["400", "700"] });
-const display = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], axes: ["opsz", "SOFT"] });
+const display = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
   title: { default: "InTune", template: "%s · InTune" },
@@ -14,12 +15,13 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbf7f0" },
-    { media: "(prefers-color-scheme: dark)", color: "#171512" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const signedIn = (await getServerUser()) !== null;
   return (
     <html lang="en" className={`${body.variable} ${display.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
@@ -27,7 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         <AppHeader />
-        <main id="main" className="flex-1">
+        <main id="main" className={signedIn ? "flex-1 pb-16 md:pb-0 md:pl-[76px] xl:pl-[244px]" : "flex-1"}>
           {children}
         </main>
       </body>

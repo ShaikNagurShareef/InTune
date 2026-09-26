@@ -10,6 +10,10 @@ Built for HackGT 13 (Meta challenge: *Bringing People Closer Together with AI*) 
 
 ## Try it
 
+**Fastest:** open the live site and press **Try as Maya Chen** (or any demo person) on the sign-in page. The demo has scripted autistic ↔ autistic and autistic ↔ non-autistic conversations — see [DEMO.md](DEMO.md) for the cast and a three-minute walkthrough.
+
+Or start fresh:
+
 1. Create an account, then create a circle.
 2. Invite someone with a private, single-use link (expires in 24 hours).
 3. Optional: open **Gemini key** and paste your own [Gemini API key](https://aistudio.google.com/apikey). Without a key, typing, phrases, sending, reading, listening, blocking and reporting all still work.

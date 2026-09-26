@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KeyedMutator } from "swr";
 import { api } from "@/lib/client/api";
 import { Button } from "@/components/ui";
@@ -18,6 +18,20 @@ interface Props {
 }
 
 const NEAR_BOTTOM_PX = 120;
+const GROUP_GAP_MS = 5 * 60 * 1000;
+const SEPARATOR_GAP_MS = 30 * 60 * 1000;
+
+const ms = (iso: string) => new Date(iso).getTime();
+
+/** "Today 3:04 PM", "Tue 3:04 PM", "12 Sep, 3:04 PM" — centred between conversation bursts. */
+function separatorLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return `Today ${time}`;
+  if ((now.getTime() - d.getTime()) / 86_400_000 < 6) return `${d.toLocaleDateString(undefined, { weekday: "short" })} ${time}`;
+  return `${d.toLocaleDateString(undefined, { day: "numeric", month: "short" })}, ${time}`;
+}
 
 /** Merges polled and older pages by ID, so polling and pagination never duplicate (FR06). */
 export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, onReply }: Props) {
@@ -57,6 +71,17 @@ export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, o
     }
   }, [newestId, visible.length]);
 
+  // Keep the newest message in view when the pane resizes (e.g. the composer finishes loading or grows).
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      if (stickToBottom.current) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const handleScroll = () => {
     const el = scrollRef.current;
     if (el) stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
@@ -80,7 +105,7 @@ export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, o
       ref={scrollRef}
       onScroll={handleScroll}
       aria-labelledby="feed-heading"
-      className="grain min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-5"
+      className="min-h-0 flex-1 overflow-y-auto px-2 py-4 sm:px-4"
     >
       <h2 id="feed-heading" className="sr-only">Messages</h2>
       {nextCursor && (
@@ -91,24 +116,41 @@ export function Feed({ circleId, latest, seen, mutate, audioRate, showSenders, o
         </div>
       )}
       {visible.length === 0 ? (
-        <div className="mx-auto mt-8 max-w-md rounded-2xl border border-dashed border-line bg-card p-8 text-center">
-          <p className="font-display text-2xl">It’s quiet here.</p>
-          <p className="mt-1 text-ink-2">Write the first message below — a hello, or a plan for this week.</p>
+        <div className="mx-auto mt-12 max-w-sm text-center">
+          <p className="text-4xl" aria-hidden="true">👋</p>
+          <p className="mt-2 text-lg font-extrabold">Start the conversation</p>
+          <p className="mt-1 text-sm text-ink-2">Say hello, or share a plan. You can add a tone so it’s easy to read.</p>
         </div>
       ) : (
-        <ol className="space-y-3" aria-live="polite" aria-relevant="additions">
-          {visible.map((m) => (
-            <MessageItem
-              key={m.id}
-              message={m}
-              replyTo={m.replyToId ? byId.get(m.replyToId) : undefined}
-              audioRate={audioRate}
-              showSender={showSenders}
-              onReply={onReply}
-              onHide={(id) => setHidden((prev) => new Set(prev).add(id))}
-              onChanged={() => void mutate()}
-            />
-          ))}
+        <ol aria-live="polite" aria-relevant="additions">
+          {visible.map((m, i) => {
+            const prev = visible[i - 1];
+            const next = visible[i + 1];
+            const newBurst = !prev || ms(m.createdAt) - ms(prev.createdAt) > SEPARATOR_GAP_MS;
+            const startsGroup = newBurst || prev.senderId !== m.senderId || ms(m.createdAt) - ms(prev.createdAt) > GROUP_GAP_MS;
+            const endsGroup =
+              !next || next.senderId !== m.senderId || ms(next.createdAt) - ms(m.createdAt) > GROUP_GAP_MS;
+            return (
+              <Fragment key={m.id}>
+                {newBurst && (
+                  <li aria-hidden="true" className="py-3 text-center text-xs font-semibold text-ink-2" suppressHydrationWarning>
+                    {separatorLabel(m.createdAt)}
+                  </li>
+                )}
+                <MessageItem
+                  message={m}
+                  replyTo={m.replyToId ? byId.get(m.replyToId) : undefined}
+                  audioRate={audioRate}
+                  showSender={showSenders}
+                  startsGroup={startsGroup}
+                  endsGroup={endsGroup}
+                  onReply={onReply}
+                  onHide={(id) => setHidden((prev) => new Set(prev).add(id))}
+                  onChanged={() => void mutate()}
+                />
+              </Fragment>
+            );
+          })}
         </ol>
       )}
     </section>
