@@ -184,40 +184,66 @@ async function generateWithOpenAi(creds: GeminiCredentials, req: GenerateRequest
   throw lastError ?? new Error("No OpenAI model available");
 }
 
+/**
+ * The other shared provider, when the operator configured both: used only if every model of the first
+ * provider is overloaded or out of quota, and only for text (recordings need their original provider).
+ */
+function fallbackCredentials(creds: GeminiCredentials, req: GenerateRequest): GeminiCredentials | null {
+  if (creds.source !== "server" || req.parts.some((p) => p.inlineData || p.fileData)) return null;
+  if ((creds.provider ?? "gemini") === "gemini" && OPENAI_KEY_PATTERN.test(serverOpenAiKey())) {
+    return { provider: "openai", apiKey: serverOpenAiKey(), model: DEFAULT_OPENAI_MODEL, source: "server" };
+  }
+  if (creds.provider === "openai" && KEY_PATTERN.test(serverGeminiKey())) {
+    return { provider: "gemini", apiKey: serverGeminiKey(), model: DEFAULT_MODEL, source: "server" };
+  }
+  return null;
+}
+
 const liveTransport: GeminiTransport = {
   async generate(creds, req) {
-    if (creds.provider === "openai") return generateWithOpenAi(creds, req);
-    const ai = new GoogleGenAI({ apiKey: creds.apiKey });
-    const candidates = await resolveModels(creds);
-    let lastError: unknown = null;
-    for (const model of candidates) {
-      const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
-      const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
-      try {
-        const res = await ai.models.generateContent({
-          model,
-          contents: [{ role: "user", parts: req.parts }],
-          config: {
-            systemInstruction: req.system,
-            responseMimeType: "application/json",
-            responseJsonSchema: req.jsonSchema,
-            temperature: 0.2,
-            ...generationLimits(model),
-            abortSignal: signal,
-          },
-        });
-        req.onModel?.(model);
-        return res.text ?? "";
-      } catch (err) {
-        if (req.signal?.aborted || !tryNextModel(err)) throw err;
-        logProviderError(err);
-        if (statusOf(err) === 404) modelCache.delete(cacheKeyFor(creds));
-        lastError = err;
-      }
+    try {
+      return await generateWithProvider(creds, req);
+    } catch (err) {
+      const alternative = fallbackCredentials(creds, req);
+      if (!alternative || req.signal?.aborted || !tryNextModel(err)) throw err;
+      logProviderError(err);
+      return generateWithProvider(alternative, req);
     }
-    throw lastError ?? new Error("No Gemini model available");
   },
 };
+
+async function generateWithProvider(creds: GeminiCredentials, req: GenerateRequest): Promise<string> {
+  if (creds.provider === "openai") return generateWithOpenAi(creds, req);
+  const ai = new GoogleGenAI({ apiKey: creds.apiKey });
+  const candidates = await resolveModels(creds);
+  let lastError: unknown = null;
+  for (const model of candidates) {
+    const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
+    const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+    try {
+      const res = await ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: req.parts }],
+        config: {
+          systemInstruction: req.system,
+          responseMimeType: "application/json",
+          responseJsonSchema: req.jsonSchema,
+          temperature: 0.2,
+          ...generationLimits(model),
+          abortSignal: signal,
+        },
+      });
+      req.onModel?.(model);
+      return res.text ?? "";
+    } catch (err) {
+      if (req.signal?.aborted || !tryNextModel(err)) throw err;
+      logProviderError(err);
+      if (statusOf(err) === 404) modelCache.delete(cacheKeyFor(creds));
+      lastError = err;
+    }
+  }
+  throw lastError ?? new Error("No Gemini model available");
+}
 
 let transport: GeminiTransport | null = null;
 
@@ -270,7 +296,8 @@ async function withRetry(fn: () => Promise<string>, signal?: AbortSignal): Promi
     } catch (err) {
       if (signal?.aborted) throw new AppError("ai_unavailable", "Cancelled.");
       if (attempt >= MAX_TRANSIENT_RETRIES || !isTransient(err)) throw toAppError(err);
-      const backoff = 400 * 2 ** attempt + Math.random() * 300;
+      // Overload (503) and quota (429) usually clear within seconds; wait ~1s, then ~2s.
+      const backoff = 1000 * 2 ** attempt + Math.random() * 400;
       await sleep(backoff);
     }
   }
