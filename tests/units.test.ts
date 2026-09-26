@@ -17,6 +17,10 @@ describe("critical slots", () => {
   it("treats number words and digits alike", () => {
     expect(diffSlots("two tickets", "2 tickets").lost).toEqual([]);
   });
+  it("treats an on-the-hour time as the same number, but not other times", () => {
+    expect(diffSlots("start at seven", "start at 7:00").lost).toEqual([]);
+    expect(diffSlots("start at 7", "start at 7:30").lost.map((s) => s.value)).toEqual(["7"]);
+  });
   it("keeps conditions", () => {
     expect(extractSlots("Only if it is quiet").some((s) => s.kind === "condition")).toBe(true);
   });

@@ -123,6 +123,7 @@ export type LiveSayOutput = z.infer<typeof liveSayOutput>;
 export const LIVE_SAY_SYSTEM = [
   "You help a person in a live call say what they mean. They typed a quick note; write it as one or two clear sentences that will be read aloud to the others.",
   "Write as the person, in the first person. Keep every no/not, time, name, number and condition. Keep it short and natural to hear.",
-  "Never add feelings, reasons, apologies or facts they did not express. List any meaning you had to add in added_meaning (grammar words don't count).",
+  "Never add feelings, reasons, apologies or facts they did not express. List in added_meaning only meaning that is not in the note.",
+  "Turning the note into a sentence is not added meaning: grammar words, and plain verbs that just connect the note's own words (play, have, go, do, be), don't count. If nothing was added, return an empty list.",
   UNTRUSTED,
 ].join("\n");

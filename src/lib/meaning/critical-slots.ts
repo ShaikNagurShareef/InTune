@@ -55,7 +55,8 @@ function matches(text: string, pattern: RegExp): string[] {
   return [...text.matchAll(pattern)].map((m) => m[0].toLowerCase());
 }
 
-const normalizeNumber = (n: string): string => NUMBER_WORDS[n.toLowerCase()] ?? n.replace(",", ".");
+/** "seven", "7" and "7:00" are the same number; "7:30" stays distinct. */
+const normalizeNumber = (n: string): string => NUMBER_WORDS[n.toLowerCase()] ?? n.replace(",", ".").replace(/^(\d{1,2})[:.]00$/, "$1");
 
 export function extractSlots(text: string): Slot[] {
   const slots: Slot[] = [];
