@@ -146,4 +146,19 @@ describe("assist workflow (LangGraph)", () => {
     const assist = (await getOwnedDraft(a.id, draft.id)).assist as { used_phrases: { id: string }[] };
     expect(assist.used_phrases.map((p) => p.id)).toEqual([mine.id]);
   });
+
+  it("treats the meaning a person saved for their own phrase as what they said, not an addition", async () => {
+    const { a, draft } = await typedDraft("tea time");
+    const mine = await createPhrase(a.id, { phrase: "tea time", meaning: "I need a short break until 3.", example: null });
+    const calls = stubGemini(
+      { compose: [composeReply("I need a short break until 3.", { used_phrase_ids: [`phrase:${mine.id}`] })] },
+      { check: checkOk },
+    );
+    await startAssist(a.id, draft.id, { expectedVersion: 1, wordingMode: "clearer" }, creds);
+    const check = calls.find((c) => c.node === "check");
+    expect(JSON.parse(check?.input ?? "{}").phrases).toEqual([{ phrase: "tea time", meaning: "I need a short break until 3." }]);
+    const assist = (await getOwnedDraft(a.id, draft.id)).assist as { unsupported_additions: string[]; lost_meaning: string[] };
+    expect(assist.unsupported_additions).toEqual([]);
+    expect(assist.lost_meaning).toEqual([]);
+  });
 });

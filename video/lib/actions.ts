@@ -5,7 +5,7 @@ import { BASE_URL, DEVICE_SCALE, VIEWPORT } from "./paths";
 import { CURSOR_SCRIPT, FAKE_SPEECH_SCRIPT, type Recorder } from "./capture";
 
 export const DEMO_PASSWORD = "InTune-demo-2026";
-export type DemoUser = "maya" | "leo" | "jordan" | "priya";
+export type DemoUser = "maya" | "leo" | "jordan" | "priya" | "guest";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const AI_TIMEOUT_MS = 45_000;

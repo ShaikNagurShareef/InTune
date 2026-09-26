@@ -197,7 +197,13 @@ export function buildAssistGraph(deps: AssistDeps, checkpointer: BaseCheckpointS
   const checkMeaning = async (s: AssistStateType) => {
     await deps.onStage("Checking nothing was changed or added");
     const draft = s.composed?.draft_text ?? "";
-    const input = { source: s.transcript, answers: s.answers, draft };
+    // The person's own saved meanings for expressions they used count as what they said.
+    const used = new Set(s.composed?.used_phrase_ids ?? []);
+    const source = s.transcript.toLowerCase();
+    const ownMeanings = s.phrases
+      .filter((p) => used.has(p.id) || source.includes(p.phrase.toLowerCase()))
+      .map((p) => ({ phrase: p.phrase, meaning: p.meaning }));
+    const input = { source: s.transcript, answers: s.answers, phrases: ownMeanings, draft };
     // The model's meaning check is a second opinion. If Gemini is overloaded or out of quota, the
     // deterministic critical-slot check below still runs, so the translation isn't lost.
     const out = await timed("check", () =>
@@ -210,7 +216,7 @@ export function buildAssistGraph(deps: AssistDeps, checkpointer: BaseCheckpointS
       if (err instanceof AppError && ["ai_unavailable", "rate_limited", "ai_malformed"].includes(err.code)) return NO_CHECK;
       throw err;
     });
-    const evidence = [s.transcript, ...s.answers.map((a) => a.answer)].join("\n");
+    const evidence = [s.transcript, ...s.answers.map((a) => a.answer), ...ownMeanings.map((p) => p.meaning)].join("\n");
     const slots = diffSlots(evidence, draft.replace(/\[[^\]]*\?\]/g, ""));
     const unique = (xs: string[]) => [...new Set(xs.map((x) => x.trim()).filter((x) => x && !isGrammarWord(x)))];
     const flags: MeaningFlags = {

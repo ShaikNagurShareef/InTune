@@ -77,6 +77,7 @@ export const COMPOSE_SYSTEM = [
 
 export const CHECK_SYSTEM = [
   "You check whether DRAFT keeps the meaning of SOURCE (plus any ANSWERS the person gave to clarifying questions).",
+  "PHRASES are the person's own saved meanings for expressions in SOURCE (for example 'red light' = 'I am overwhelmed and need to stop'). Meaning taken from them is what the person said, never an addition.",
   "List in unsupported_additions every feeling, reason, fact, politeness or commitment in DRAFT that SOURCE and ANSWERS do not support. Ignore grammar words needed to form sentences (is, at, I, will, the) — they are not additions.",
   "Also report in lost_meaning if DRAFT changes who does something (for example the person's own plan turned into an instruction to the reader).",
   "List in lost_meaning every essential point of SOURCE that DRAFT drops or changes, especially negation, times, dates, conditions, names and numbers.",

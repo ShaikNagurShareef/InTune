@@ -1,5 +1,7 @@
 # InTune: an AI interpreter between people who communicate differently
 
+**Team Coding Claws (HackGT 13):** Nagur Shareef Shaik · Sahith Reddy Thummala · Pranav Nagothu · Geethanjali Nagaboina
+
 **Live:** https://intune-eta.vercel.app · **Code:** https://github.com/ShaikNagurShareef/InTune · **Demo accounts:** see [DEMO.md](DEMO.md)
 
 ## Why I built this

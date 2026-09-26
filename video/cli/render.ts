@@ -132,5 +132,5 @@ if (!estimate) {
   console.log(`YouTube: ${path.join(FINAL_DIR, "YOUTUBE.md")} (title, description, chapters) and intune-thumbnail.jpg`);
 }
 const total = built.reduce((n, b) => n + b.duration, 0);
-console.log(`Done: ${base}.mp4 (${Math.floor(total / 60)}:${String(Math.round(total % 60)).padStart(2, "0")}), plus .srt and .vtt`);
+console.log(`Done: ${base}.mp4 (${Math.floor(total / 60)}:${String(Math.floor(total % 60)).padStart(2, "0")}), plus .srt and .vtt`);
 console.log(await probe(`${base}.mp4`));

@@ -52,6 +52,19 @@ const openChat = async (page: Page, name: RegExp) => {
   await page.waitForTimeout(1200);
 };
 
+/** Leo's and Maya's one-to-one chat, from each side. */
+// Anchored: group rows can also mention these names in their last-message preview.
+const LEO_TO_MAYA = /^(M\s*)?Maya Chen/;
+const MAYA_TO_LEO = /^(L\s*)?Leo Park/;
+
+/** Approves the reviewed translation (acknowledging any flagged change) and waits until it is sent. */
+const approveAndSend = async (d: Director, page: Page) => {
+  const ack = page.getByRole("checkbox", { name: /I’ve checked it/ });
+  if (await ack.isVisible()) await d.click(ack, 400);
+  await d.click(page.getByRole("button", { name: "Approve and send" }), 400);
+  await page.getByRole("status").filter({ hasText: "Sent." }).waitFor({ timeout: 20_000 });
+};
+
 /** Maya's direct chat with Priya (not the family circle, whose preview also mentions Priya). */
 const PRIYA_DIRECT = /Priya Chen\s*Are you still OK/;
 
@@ -77,11 +90,20 @@ export const SCENES: Scene[] = [
     ],
   },
   {
+    id: "team",
+    kind: "card",
+    card: "team",
+    beats: [
+      { say: "We’re Coding Claws, at HackGT 13.", run: ({ card }) => card(1) },
+      { say: "Nagur Shareef Shaik, Sahith Reddy Thummala, Pranav Nagothu, and Geethanjali Nagaboina.", run: ({ card }) => card(2) },
+    ],
+  },
+  {
     id: "story",
     kind: "card",
     card: "story",
     beats: [
-      { say: "I grew up with a close friend who found conversations hard.", run: ({ card }) => card(1) },
+      { say: "This project started with a friend. I grew up with a close friend who found conversations hard.", run: ({ card }) => card(1) },
       { say: "In groups, he struggled to keep up, and I often watched him get lost in the conversation.", run: ({ card }) => card(2) },
       { say: "I always wished I could build something to help him.", run: ({ card }) => card(3) },
       {
@@ -231,15 +253,71 @@ export const SCENES: Scene[] = [
         say: "He adds a tone, “not upset”, and approves it. The AI can never send anything by itself.",
         run: async ({ d, page }) => {
           await d.click(page.getByRole("button", { name: "Not upset" }).last(), 600);
-          const ack = page.getByRole("checkbox", { name: /I’ve checked it/ });
-          if (await ack.isVisible()) await d.click(ack, 400);
-          await d.click(page.getByRole("button", { name: "Approve and send" }), 400);
-          await page.getByRole("status").filter({ hasText: "Sent." }).waitFor({ timeout: 20_000 });
+          await approveAndSend(d, page);
         },
       },
       {
         say: "It’s labelled as AI-assisted and approved by Leo, and a built-in check flags any “not”, time or name that goes missing.",
         run: async ({ d, page }) => d.point(page.getByText("AI-assisted · you approved").last(), 1500),
+      },
+    ],
+  },
+  {
+    id: "phrases",
+    chapter: "Personal phrases",
+    kind: "app",
+    as: "leo",
+    label: "Leo · a private chat with Maya",
+    mutates: true,
+    setup: async ({ page }) => openChat(page, LEO_TO_MAYA),
+    beats: [
+      {
+        say: "InTune also learns each person’s own words. When talking gets too much, Leo says “red light”.",
+        run: async ({ d, page }) => d.type(page.getByLabel("Your message"), "red light"),
+      },
+      {
+        say: "He saved what that means in his phrasebook, so InTune uses his meaning, not a guess.",
+        run: async ({ d, page }) =>
+          d.ai(
+            "phrase",
+            () => d.click(page.getByRole("button", { name: "Translate", exact: true }), 200),
+            page.getByRole("heading", { name: /Check the translation/ }),
+          ),
+      },
+      {
+        say: "Maya will read: “I am overwhelmed and need to stop for now.” Leo approves, and it’s sent.",
+        run: async ({ d, page }) => {
+          await d.point(page.getByText("They’ll see exactly this"), 1200);
+          await approveAndSend(d, page);
+        },
+      },
+    ],
+  },
+  {
+    id: "reply",
+    kind: "app",
+    as: "maya",
+    label: "Maya · the other side",
+    mutates: true,
+    setup: async ({ page }) => {
+      await page.goto(`${BASE_URL}/circles`);
+      await page.getByRole("link", { name: MAYA_TO_LEO }).last().waitFor();
+    },
+    beats: [
+      {
+        say: "On the other side, Maya understands straight away, and she can see Leo approved those exact words.",
+        run: async ({ d, page }) => {
+          await d.click(page.getByRole("link", { name: MAYA_TO_LEO }).last(), 1200);
+          await d.point(page.getByText("AI-assisted · approved by sender").last(), 1200);
+        },
+      },
+      {
+        say: "She replies in her own words. Messages like this never need AI at all.",
+        run: async ({ d, page }) => {
+          await d.type(page.getByLabel("Your message"), "OK. Take your time. I’m here later.");
+          await d.click(page.getByRole("button", { name: "Send", exact: true }), 400);
+          await page.getByRole("status").filter({ hasText: "Sent." }).waitFor({ timeout: 20_000 });
+        },
       },
     ],
   },
@@ -275,6 +353,36 @@ export const SCENES: Scene[] = [
           await d.scrollBy(420, 700);
           await d.click(page.getByText("Soft dark", { exact: true }), 1500);
           await d.click(page.getByText("Calm", { exact: true }), 900);
+        },
+      },
+    ],
+  },
+  {
+    id: "invite",
+    chapter: "Joining a circle safely",
+    kind: "app",
+    as: "guest",
+    label: "A new person, invited to Board Game Night",
+    mutates: true,
+    setup: async ({ page }) => {
+      await page.goto(`${BASE_URL}/circles`);
+      await page.getByRole("tab", { name: /Requests/ }).waitFor();
+    },
+    beats: [
+      {
+        say: "Circles stay small and private. People join only by invitation, right inside the app.",
+        run: async ({ d, page }) => d.click(page.getByRole("tab", { name: /Requests/ }), 1200),
+      },
+      {
+        say: "Before joining, you see exactly who will read your posts, so there are no surprises.",
+        run: async ({ d, page }) => d.point(page.getByText(/Who will read your posts/).first(), 1800),
+      },
+      {
+        say: "One tap, and you’re in.",
+        run: async ({ d, page }) => {
+          await d.click(page.getByRole("button", { name: "Join circle" }).first(), 400);
+          await page.waitForURL(/\/circles\/[0-9a-f-]+$/, { timeout: 20_000 });
+          await page.waitForTimeout(800);
         },
       },
     ],
@@ -443,6 +551,7 @@ export const SCENES: Scene[] = [
     beats: [
       { say: "InTune brings people closer, without asking anyone to become someone else.", run: ({ card }) => card(1) },
       { say: "It’s live today. Try it with the demo accounts, and read the code on GitHub.", run: ({ card }) => card(2) },
+      { say: "From all of us at Coding Claws, thank you for watching.", run: ({ card }) => card(3) },
     ],
   },
 ];
