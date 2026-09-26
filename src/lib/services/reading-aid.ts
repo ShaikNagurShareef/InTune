@@ -11,6 +11,9 @@ import { getMessageForMember } from "./messages";
 
 const SIMPLIFY_LIMIT_PER_HOUR = 120;
 
+const slotWarnings = (original: string, simplified: string): string[] =>
+  diffSlots(original, simplified).lost.map((l) => `The original also mentions ${describeSlot(l)}. Check the original.`);
+
 export interface AidSummary {
   asking: string;
   replyExpected: "yes" | "no" | "unclear";
@@ -52,7 +55,8 @@ export async function simplifyForReader(
       messageId,
       messageVersion: cached.messageVersion,
       simplifiedText: cached.simplifiedText,
-      warnings: (cached.warnings as string[] | null) ?? [],
+      // Deterministic and cheap, so always re-checked: a cached aid never shows an outdated warning.
+      warnings: slotWarnings(message.text, cached.simplifiedText),
       summary: (cached.summary as AidSummary | null) ?? null,
       modelId: cached.modelId,
     };
@@ -64,8 +68,7 @@ export async function simplifyForReader(
     { system: SIMPLIFY_SYSTEM, parts: [{ text: JSON.stringify({ message: message.text }) }] },
     simplifyOutput,
   );
-  const lost = diffSlots(message.text, data.simplified_text).lost;
-  const warnings = lost.map((l) => `The original also mentions ${describeSlot(l)}. Check the original.`);
+  const warnings = slotWarnings(message.text, data.simplified_text);
   // Sender-chosen tags outrank the model's reading of whether a reply is needed.
   const noReplyTag = message.toneTags.includes("no_reply_needed");
   const summary: AidSummary = {
