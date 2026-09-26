@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requirePageUser } from "@/lib/auth/server-session";
-import { diagnosticsSummary } from "@/lib/services/diagnostics";
+import { notFound } from "next/navigation";
+import { canViewDiagnostics, diagnosticsSummary } from "@/lib/services/diagnostics";
 import { DEFAULT_MODEL, PROMPT_VERSION } from "@/lib/gemini/config";
 import { PageTitle } from "@/components/ui";
 
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 const ms = (n: number) => `${(n / 1000).toFixed(1)} s`;
 
 export default async function DiagnosticsPage() {
-  await requirePageUser("/diagnostics");
+  const user = await requirePageUser("/diagnostics");
+  if (!canViewDiagnostics(user.email)) notFound();
   const d = await diagnosticsSummary();
   const tiles = [
     { label: "Assisted turns", value: String(d.assistLatency.n) },

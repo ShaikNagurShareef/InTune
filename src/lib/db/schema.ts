@@ -185,7 +185,8 @@ export const messages = pgTable(
     approvalId: uuid("approval_id"),
     idempotencyKey: text("idempotency_key").notNull(),
     payloadHash: text("payload_hash").notNull(),
-    createdAt: createdAt(),
+    // Millisecond precision so the (created_at, id) cursor round-trips exactly through a JS Date.
+    createdAt: timestamp("created_at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),
     editedAt: ts("edited_at"),
     deletedAt: ts("deleted_at"),
   },

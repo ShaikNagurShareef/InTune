@@ -15,7 +15,11 @@ function errorResponse(err: AppError, requestId: string): Response {
 
 function sameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
-  if (!origin) return true;
+  if (!origin) {
+    // Browsers send Sec-Fetch-Site; server-to-server callbacks (e.g. Blob upload-completed) send neither.
+    const site = req.headers.get("sec-fetch-site");
+    return site === null || site === "same-origin" || site === "none";
+  }
   try {
     return new URL(origin).host === new URL(req.url).host;
   } catch {

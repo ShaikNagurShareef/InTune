@@ -80,11 +80,12 @@ function makeDeps(job: Job, creds: GeminiCredentials, signal: AbortSignal): Assi
   };
 }
 
-async function failJob(job: Job, errorCode: string, draftStatus = "DRAFT"): Promise<Job> {
+async function failJob(job: Job, errorCode: string, draftStatus = "DRAFT"): Promise<Job | undefined> {
+  // A cancelled job stays CANCELLED; only live jobs are marked FAILED.
   const [row] = await db()
     .update(jobs)
     .set({ status: "FAILED", errorCode, updatedAt: new Date() })
-    .where(eq(jobs.id, job.id))
+    .where(and(eq(jobs.id, job.id), eq(jobs.cancelled, false)))
     .returning();
   await db()
     .update(drafts)
@@ -140,8 +141,10 @@ async function applyOutcome(job: Job, state: AssistStateType, pending: AssistInt
       return failed;
     }
     if (pending && pending.kind !== "review") {
-      const transcript = pending.kind === "transcript" ? pending.transcript : draft.transcript;
-      const fromTranscript = pending.kind === "transcript" ? { text: pending.transcript, aiAssisted: true } : {};
+      const isMediaDraft = draft.sourceMode === "speak" || draft.sourceMode === "video";
+      const transcript = isMediaDraft ? state.transcript : draft.transcript;
+      // For media drafts the (possibly corrected) transcript is the person's current words.
+      const fromTranscript = isMediaDraft && transcript ? { text: transcript, aiAssisted: true } : {};
       await tx
         .update(drafts)
         .set({ status: "NEEDS_CLARIFICATION", transcript, ...fromTranscript })
@@ -201,6 +204,8 @@ async function runSegment(
         ? err
         : new AppError("ai_unavailable", "Wording help is unavailable right now. You can still send your own words.");
     await failJob(job, appErr.code);
+    const draft = await getOwnedDraft(job.ownerId, job.draftId).catch(() => null);
+    if (draft?.mediaId && !draft.transcript) await eraseMedia(draft.mediaId);
     void recordEvent("assist_outcome", { outcome: "error", code: appErr.code, ms: Date.now() - started });
     throw appErr;
   }
@@ -343,5 +348,7 @@ export async function cancelJob(userId: string, jobId: string): Promise<JobView>
     .set({ status: "DRAFT" })
     .where(and(eq(drafts.id, job.draftId), inArray(drafts.status, ["PROCESSING", "NEEDS_CLARIFICATION"])));
   await deleteCheckpoints(job.id);
+  const draft = await getOwnedDraft(userId, job.draftId).catch(() => null);
+  if (draft?.mediaId) await eraseMedia(draft.mediaId);
   return toView(row);
 }

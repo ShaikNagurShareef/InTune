@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db, type Db } from "@/lib/db";
-import { drafts, messages } from "@/lib/db/schema";
+import { drafts, jobs, messages } from "@/lib/db/schema";
+import { deleteCheckpoints } from "@/lib/graph/checkpointer";
 import { AppError, notFound } from "@/lib/errors";
 import { requireMember } from "@/lib/authz";
 import type { SourceMode } from "@/lib/validation";
@@ -40,11 +41,12 @@ export async function createDraft(userId: string, input: NewDraft): Promise<Draf
 }
 
 /** Drafts are strictly owner-scoped; anyone else gets a 404 (SEC02). */
-export async function getOwnedDraft(userId: string, draftId: string, conn: Db = db()): Promise<Draft> {
-  const [row] = await conn
+export async function getOwnedDraft(userId: string, draftId: string, conn: Db = db(), lock = false): Promise<Draft> {
+  const query = conn
     .select()
     .from(drafts)
     .where(and(eq(drafts.id, draftId), eq(drafts.ownerId, userId), isNull(drafts.deletedAt)));
+  const [row] = lock ? await query.for("update") : await query;
   if (!row) throw notFound();
   return row;
 }
@@ -94,5 +96,7 @@ export async function updateDraft(userId: string, draftId: string, patch: DraftP
 
 export async function deleteDraft(userId: string, draftId: string): Promise<void> {
   await getOwnedDraft(userId, draftId);
+  const draftJobs = await db().select({ id: jobs.id }).from(jobs).where(eq(jobs.draftId, draftId));
+  for (const j of draftJobs) await deleteCheckpoints(j.id);
   await db().update(drafts).set({ deletedAt: new Date(), text: "", sourceText: "", transcript: null, assist: null }).where(eq(drafts.id, draftId));
 }

@@ -17,7 +17,12 @@ function extensionFor(type: string): string {
 }
 
 /** Uploads straight to private storage, then asks the server to verify the file before it can be used. */
-export async function uploadCapture(capture: Capture, userId: string, mode: UploadMode): Promise<string> {
+export async function uploadCapture(
+  capture: Capture,
+  userId: string,
+  mode: UploadMode,
+  signal?: AbortSignal,
+): Promise<string> {
   const type = capture.blob.type || `${capture.kind}/webm`;
   let storageKey: string;
   if (mode === "blob") {
@@ -26,10 +31,11 @@ export async function uploadCapture(capture: Capture, userId: string, mode: Uplo
       handleUploadUrl: "/api/v1/media",
       clientPayload: JSON.stringify({ kind: capture.kind }),
       contentType: type.split(";")[0],
+      abortSignal: signal,
     });
     storageKey = res.pathname;
   } else {
-    const res = await fetch(`/api/v1/media/local?kind=${capture.kind}`, { method: "POST", body: capture.blob });
+    const res = await fetch(`/api/v1/media/local?kind=${capture.kind}`, { method: "POST", body: capture.blob, signal });
     if (!res.ok) throw new ApiError(res.status, "upload_failed", "Upload failed. Please try again.", true);
     storageKey = ((await res.json()) as { pathname: string }).pathname;
   }
@@ -40,6 +46,7 @@ export async function uploadCapture(capture: Capture, userId: string, mode: Uplo
       consent_version: CONSENT_VERSION,
       client_duration_sec: Math.round(capture.durationSec * 10) / 10,
     },
+    signal,
   });
   return registered.id;
 }

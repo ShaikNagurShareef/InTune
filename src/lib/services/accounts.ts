@@ -26,13 +26,16 @@ export async function signUp(input: NewAccount): Promise<{ id: string }> {
 }
 
 const INVALID_LOGIN = "Email or password is not correct.";
+// Compared against when the email is unknown, so response time doesn't reveal which accounts exist.
+const DUMMY_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8.7G9Z1b0k1FJ6b3o1bA8oQ6R6bY0a";
 
 export async function signIn(email: string, password: string): Promise<{ id: string }> {
   const [user] = await db()
     .select({ id: users.id, passwordHash: users.passwordHash })
     .from(users)
     .where(and(eq(users.email, email), isNull(users.deletedAt)));
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
+  if (!user || !ok) {
     throw new AppError("unauthenticated", INVALID_LOGIN);
   }
   return { id: user.id };

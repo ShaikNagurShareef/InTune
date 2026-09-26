@@ -8,8 +8,15 @@ import { Button, Notice, inputClass } from "./ui";
 
 type Mode = "signin" | "signup";
 
+/** Only same-origin paths; rejects "//host", "/\\host" and control characters (open-redirect guard). */
 function safeNext(raw: string | null, fallback: string): string {
-  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : fallback;
+  if (!raw || !raw.startsWith("/") || /[\\\u0000-\u001f]/.test(raw)) return fallback;
+  try {
+    const url = new URL(raw, window.location.origin);
+    return url.origin === window.location.origin ? `${url.pathname}${url.search}${url.hash}` : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export function AuthForm({ mode }: { mode: Mode }) {

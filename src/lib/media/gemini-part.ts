@@ -25,10 +25,11 @@ export async function geminiMediaPart(
     return { part: { inlineData: { mimeType: object.mime, data: bytes.toString("base64") } }, cleanup: noop };
   }
   const ai = new GoogleGenAI({ apiKey: creds.apiKey });
-  const file = await ai.files.upload({
-    file: new Blob([new Uint8Array(bytes)], { type: object.mime }),
-    config: { mimeType: object.mime },
-  });
+  const file = await ai.files
+    .upload({ file: new Blob([new Uint8Array(bytes)], { type: object.mime }), config: { mimeType: object.mime } })
+    .catch(() => {
+      throw new AppError("ai_unavailable", "Gemini could not receive this video. Try a shorter clip or type your message.");
+    });
   const name = file.name;
   if (!name) throw new AppError("ai_unavailable", "Upload to Gemini failed. You can still type your message.");
   const cleanup = async () => {
@@ -38,7 +39,7 @@ export async function geminiMediaPart(
   let current = file;
   while (current.state === FileState.PROCESSING && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, FILE_POLL_MS));
-    current = await ai.files.get({ name });
+    current = await ai.files.get({ name }).catch(() => current);
   }
   if (current.state !== FileState.ACTIVE || !current.uri) {
     await cleanup();

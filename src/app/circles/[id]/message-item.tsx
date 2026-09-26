@@ -9,6 +9,7 @@ import { speak, useSpeechAvailable } from "@/components/speech";
 import type { FeedMessage, ReplyTarget } from "./types";
 
 interface ReadingAid {
+  messageVersion: number;
   simplifiedText: string;
   warnings: string[];
 }
@@ -56,7 +57,9 @@ function ListenControls({ text, rate }: { text: string; rate: number }) {
 
 export function MessageItem({ message: m, replyTo, audioRate, onReply, onHide, onChanged }: Props) {
   const hasKey = useHasGeminiKey();
-  const [aid, setAid] = useState<ReadingAid | null>(null);
+  const [storedAid, setAid] = useState<ReadingAid | null>(null);
+  // A reading aid for an older version is dropped as soon as the sender's correction arrives.
+  const aid = storedAid && storedAid.messageVersion === m.version ? storedAid : null;
   const [aidState, setAidState] = useState<"idle" | "loading" | "error">("idle");
   const [aidError, setAidError] = useState<string | null>(null);
   const [mode, setMode] = useState<"view" | "edit" | "report">("view");
@@ -103,7 +106,8 @@ export function MessageItem({ message: m, replyTo, audioRate, onReply, onHide, o
   const block = async () => {
     if (!confirm(`Block ${m.senderName}? You won't see their messages. They stay in the circle and aren't told.`)) return;
     await api("/api/v1/blocks", { body: { user_id: m.senderId } }).catch(() => undefined);
-    onChanged();
+    // Reload so every cached message from the blocked person disappears at once.
+    window.location.reload();
   };
 
   const report = async (form: FormData) => {

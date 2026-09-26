@@ -3,6 +3,11 @@ import { db } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { AppError } from "@/lib/errors";
 
+/** Vercel sets x-real-ip; fall back to the first X-Forwarded-For hop. */
+export function clientIp(req: Request): string {
+  return req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+}
+
 /** Fixed-window counter in Postgres; works across serverless instances (SEC07). */
 export async function rateLimit(key: string, limit: number, windowSec: number): Promise<void> {
   const now = new Date();

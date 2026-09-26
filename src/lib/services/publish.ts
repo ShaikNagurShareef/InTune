@@ -92,7 +92,10 @@ async function verifyApproval(tx: Db, userId: string, input: PublishInput): Prom
     if (input.approvalId) throw new AppError("invalid_input", "Approval requires its draft.");
     return false;
   }
-  const draft = await getOwnedDraft(userId, input.draftId, tx);
+  const draft = await getOwnedDraft(userId, input.draftId, tx, true);
+  if (draft.status === "SENT" || draft.circleId !== input.circleId || draft.replyToId !== input.replyToId) {
+    throw new AppError("stale_version", APPROVAL_STALE);
+  }
   if (!input.approvalId) {
     if (draft.aiAssisted) throw new AppError("conflict", "AI-assisted messages need your approval before sending.");
     return false;
@@ -113,6 +116,16 @@ async function verifyApproval(tx: Db, userId: string, input: PublishInput): Prom
     audienceHash(input.circleId, input.replyToId, memberIds) === approval.audienceHash;
   if (!matches) throw new AppError("stale_version", APPROVAL_STALE);
   return draft.aiAssisted;
+}
+
+/** A reply must point at a message in the same circle. */
+async function verifyReplyTarget(tx: Db, input: PublishInput): Promise<void> {
+  if (!input.replyToId) return;
+  const [target] = await tx
+    .select({ circleId: messages.circleId })
+    .from(messages)
+    .where(eq(messages.id, input.replyToId));
+  if (!target || target.circleId !== input.circleId) throw new AppError("not_found", "The message you replied to is not available.");
 }
 
 async function findExisting(tx: Db, userId: string, key: string) {
@@ -141,6 +154,7 @@ export async function publishMessage(userId: string, input: PublishInput): Promi
     const existing = await findExisting(tx, userId, input.idempotencyKey);
     if (existing) return replay(existing, payloadHash);
 
+    await verifyReplyTarget(tx, input);
     const aiAssisted = await verifyApproval(tx, userId, input);
     const [inserted] = await tx
       .insert(messages)

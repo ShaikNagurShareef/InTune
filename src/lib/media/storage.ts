@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { del, get } from "@vercel/blob";
+import { del, get, list } from "@vercel/blob";
 
 /**
  * Private media storage. Production uses a private Vercel Blob store; local development without a
@@ -50,4 +50,17 @@ export async function deleteObject(key: string): Promise<void> {
     return;
   }
   await del(key).catch(() => undefined);
+}
+
+/** Keys under media/ uploaded before `before`, including uploads that were never registered. */
+export async function listObjectsOlderThan(before: Date): Promise<string[]> {
+  if (storageMode() === "local") return [];
+  const keys: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await list({ prefix: "media/", cursor, limit: 1000 });
+    keys.push(...page.blobs.filter((b) => b.uploadedAt < before).map((b) => b.pathname));
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+  return keys;
 }

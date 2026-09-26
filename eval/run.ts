@@ -152,7 +152,7 @@ async function evaluate(f: Fixture, baseline: Baseline, creds: GeminiCredentials
     const draft = out.draft.replace(/\[[^\]]*\?\]/g, "").trim();
     const missingKeep = f.expect.keep.filter((k) => !keepSatisfied(k, draft) && !(out.asked && baseline !== "B2"));
     const forbiddenHit = f.expect.forbid.filter((x) => norm(draft).includes(norm(x)));
-    const srcNeg = hasNegation(out.evidence);
+    const srcNeg = hasNegation(f.source);
     return {
       id: f.id,
       family: f.family,
@@ -163,7 +163,9 @@ async function evaluate(f: Fixture, baseline: Baseline, creds: GeminiCredentials
       missingKeep,
       forbiddenHit,
       negationOk: srcNeg ? hasNegation(draft) || (out.asked && baseline === "B1") : null,
-      inventedSlots: diffSlots(out.evidence, draft).added.filter((s) => s.kind !== "name").map((s) => s.value),
+      inventedSlots: diffSlots(out.evidence, draft)
+        .added.filter((s) => s.kind === "number" || s.kind === "time")
+        .map((s) => s.value),
       modelFlags: out.flags,
       latencyMs: Date.now() - started,
       error: null,
@@ -186,11 +188,12 @@ function summarize(fixtures: Fixture[], results: CaseResult[]) {
   const clarifyCases = results.filter((r) => byId.get(r.id)?.expect.clarify);
   const clearCases = results.filter((r) => !byId.get(r.id)?.expect.clarify && r.family !== "simplify");
   const negCases = results.filter((r) => r.negationOk !== null);
+  const keepCases = results.filter((r) => (byId.get(r.id)?.expect.keep.length ?? 0) > 0);
   const latencies = results.filter((r) => !r.error).map((r) => r.latencyMs);
   return {
     cases: results.length,
     errors: results.filter((r) => r.error).length,
-    critical_keep: ratio(results.filter((r) => r.keepOk).length, results.length),
+    critical_keep: ratio(keepCases.filter((r) => r.keepOk).length, keepCases.length),
     negation_preserved_or_queried: ratio(negCases.filter((r) => r.negationOk).length, negCases.length),
     clarification_recall: ratio(clarifyCases.filter((r) => r.asked).length, clarifyCases.length),
     unnecessary_clarification: ratio(clearCases.filter((r) => r.asked).length, clearCases.length),

@@ -127,10 +127,13 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
     onClearReply();
   };
 
-  const handleJob = async (next: JobView, current: Draft) => {
+  const handleJob = async (next: JobView, current: Draft, signal: AbortSignal) => {
+    if (signal.aborted) return;
     setJob(next);
     if (next.status === "REVIEW_READY") {
-      setDraft(await api<Draft>(`/api/v1/drafts/${current.id}`));
+      const fresh = await api<Draft>(`/api/v1/drafts/${current.id}`, { signal });
+      if (signal.aborted) return;
+      setDraft(fresh);
       setStage("review");
       return;
     }
@@ -149,48 +152,65 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
     setStage("compose");
   };
 
-  const run = async (current: Draft, call: (signal: AbortSignal) => Promise<JobView>) => {
-    const controller = new AbortController();
+  const run = async (
+    current: Draft,
+    call: (signal: AbortSignal) => Promise<JobView>,
+    controller = new AbortController(),
+  ) => {
     abortRef.current = controller;
     setStage("processing");
-    setStageLabel("Starting");
     setError(null);
     try {
-      await handleJob(await call(controller.signal), current);
+      await handleJob(await call(controller.signal), current, controller.signal);
     } catch (err) {
-      setError(describe(err));
-      setStage("compose");
+      if (!controller.signal.aborted) {
+        setError(describe(err));
+        setStage("compose");
+      }
     } finally {
-      abortRef.current = null;
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
   const startAssist = async () => {
     setError(null);
     setSentNote(null);
+    setJob(null);
+    // One controller covers upload, draft setup and the assist call, so Cancel works at every step.
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+    setStage("processing");
+    setStageLabel(isMedia ? "Uploading privately" : "Starting");
     try {
       let created = await api<Draft>("/api/v1/drafts", {
         body: { circle_id: circle.id, reply_to_id: replyTo?.id ?? null, source_mode: mode, source_text: isMedia ? "" : text },
+        signal,
       });
       if (isMedia) {
-        if (!capture) return;
-        setStage("processing");
-        setStageLabel("Uploading privately");
-        const mediaId = await uploadCapture(capture, me.id, uploadMode);
+        if (!capture) throw new Error("no recording");
+        const mediaId = await uploadCapture(capture, me.id, uploadMode, signal);
+        if (signal.aborted) return;
         created = await api<Draft>(`/api/v1/drafts/${created.id}`, {
           method: "PATCH",
           body: { expected_version: created.version, media_id: mediaId },
+          signal,
         });
       }
+      if (signal.aborted) return;
       setDraft(created);
-      await run(created, (signal) =>
-        api<JobView>(`/api/v1/drafts/${created.id}/assist`, {
-          body: { expected_version: created.version, wording_mode: wording },
-          gemini: true,
-          signal,
-        }),
+      await run(
+        created,
+        (s) =>
+          api<JobView>(`/api/v1/drafts/${created.id}/assist`, {
+            body: { expected_version: created.version, wording_mode: wording },
+            gemini: true,
+            signal: s,
+          }),
+        controller,
       );
     } catch (err) {
+      if (signal.aborted) return;
       setError(describe(err));
       setStage("compose");
     }
@@ -274,11 +294,14 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
     setIsSending(true);
     setSendError(null);
     setSentNote(null);
+    const scope = `manual:${replyTo?.id ?? ""}:${text}`;
     try {
       await api("/api/v1/messages", {
         body: { circle_id: circle.id, text, reply_to_id: replyTo?.id ?? null, draft_id: null, approval_id: null },
-        idempotencyKey: keyFor(`manual:${replyTo?.id ?? ""}:${text}`),
+        idempotencyKey: keyFor(scope),
       });
+      // The key only protects retries of this send; the same words sent later are a new message.
+      sendKeys.current.delete(scope);
       resetAll();
       setSentNote("Sent.");
       onSent();
@@ -311,7 +334,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
   return (
     <section aria-labelledby="composer-heading" className="rounded-2xl border border-line bg-card p-4 shadow-[var(--shadow)] sm:p-5">
       <h2 id="composer-heading" className="sr-only">Write a message</h2>
-      {replyTo && (
+      {replyTo && stage === "compose" && (
         <p className="mb-3 flex items-center gap-2 rounded-lg bg-paper-2 px-3 py-2 text-sm">
           <span className="flex-1">Replying to {replyTo.senderName}: “{replyTo.snippet}”</span>
           <Button tone="ghost" className="text-sm" onClick={onClearReply}>✕ Not a reply</Button>
@@ -329,7 +352,10 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
                 type="button"
                 role="radio"
                 aria-checked={mode === m.value}
-                onClick={() => setMode(m.value)}
+                onClick={() => {
+                  setMode(m.value);
+                  setCapture(null);
+                }}
                 className={`min-h-11 flex-1 rounded-lg px-3 font-bold ${mode === m.value ? "bg-card shadow-[var(--shadow)]" : "text-ink-2 hover:text-ink"}`}
               >
                 {m.label}
@@ -498,7 +524,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
           draft={draft}
           circleName={circle.name}
           memberNames={memberNames}
-          replyLabel={replyTo ? replyTo.senderName : null}
+          replyLabel={draft.replyToId ? (replyTo?.id === draft.replyToId ? replyTo.senderName : "an earlier message") : null}
           isSending={isSending}
           sendError={sendError}
           onDraftChange={setDraft}

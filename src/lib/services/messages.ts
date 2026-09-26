@@ -104,7 +104,9 @@ function toFeedMessage(m: typeof messages.$inferSelect, senderName: string, view
 export async function getMessageForMember(userId: string, messageId: string): Promise<typeof messages.$inferSelect> {
   const [m] = await db().select().from(messages).where(eq(messages.id, messageId));
   if (!m) throw notFound();
-  await requireMember(userId, m.circleId);
+  const membership = await requireMember(userId, m.circleId);
+  // Same visibility as the feed: nothing from before the viewer joined (FR05).
+  if (m.createdAt < membership.joinedAt) throw notFound();
   return m;
 }
 

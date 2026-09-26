@@ -10,13 +10,14 @@ import type { FeedMessage, FeedPage, ReplyTarget } from "./types";
 interface Props {
   circleId: string;
   latest: FeedPage;
+  seen: FeedMessage[];
   mutate: KeyedMutator<FeedPage>;
   audioRate: number;
   onReply: (target: ReplyTarget) => void;
 }
 
 /** Merges the polled latest page with older pages by ID, so polling and pagination never duplicate (FR06). */
-export function Feed({ circleId, latest, mutate, audioRate, onReply }: Props) {
+export function Feed({ circleId, latest, seen, mutate, audioRate, onReply }: Props) {
   const [older, setOlder] = useState<FeedMessage[]>([]);
   const [cursor, setCursor] = useState<string | null | undefined>(undefined);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -25,11 +26,11 @@ export function Feed({ circleId, latest, mutate, audioRate, onReply }: Props) {
   const nextCursor = cursor === undefined ? latest.nextCursor : cursor;
   const messages = useMemo(() => {
     const byId = new Map<string, FeedMessage>();
-    for (const m of [...older, ...latest.messages]) byId.set(m.id, m);
+    for (const m of [...older, ...seen, ...latest.messages]) byId.set(m.id, m);
     return [...byId.values()].sort((a, b) =>
       a.createdAt === b.createdAt ? a.id.localeCompare(b.id) : a.createdAt.localeCompare(b.createdAt),
     );
-  }, [older, latest.messages]);
+  }, [older, seen, latest.messages]);
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
 
   const newestId = latest.messages[0]?.id;

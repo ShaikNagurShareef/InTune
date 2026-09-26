@@ -15,6 +15,7 @@ import {
 } from "@/lib/db/schema";
 import { deleteCheckpoints } from "@/lib/graph/checkpointer";
 import { randomToken } from "@/lib/hash";
+import { deleteObject, listObjectsOlderThan } from "@/lib/media/storage";
 import { eraseMedia } from "./media";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -35,6 +36,9 @@ export async function purgeExpired(now = new Date()): Promise<PurgeReport> {
     .from(media)
     .where(and(isNull(media.deletedAt), lt(media.expiresAt, now)));
   for (const m of expiredMedia) await eraseMedia(m.id);
+  // Uploads whose registration never happened have no row; anything older than 24 h is erased too.
+  const stale = await listObjectsOlderThan(dayAgo);
+  for (const key of stale) await deleteObject(key);
 
   const oldJobs = await db().select({ id: jobs.id }).from(jobs).where(lt(jobs.updatedAt, dayAgo));
   for (const j of oldJobs) await deleteCheckpoints(j.id);
@@ -51,7 +55,7 @@ export async function purgeExpired(now = new Date()): Promise<PurgeReport> {
     .returning({ id: auditEvents.id });
   await db().delete(rateLimits).where(lt(rateLimits.windowStart, dayAgo));
 
-  return { media: expiredMedia.length, drafts: abandoned.length, jobs: oldJobs.length, events: events.length };
+  return { media: expiredMedia.length + stale.length, drafts: abandoned.length, jobs: oldJobs.length, events: events.length };
 }
 
 /**

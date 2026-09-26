@@ -2,6 +2,15 @@ import { and, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { auditEvents } from "@/lib/db/schema";
 
+/** Restricted page (spec §10): only emails listed in DIAGNOSTICS_EMAILS (comma-separated). */
+export function canViewDiagnostics(email: string): boolean {
+  const allowed = (process.env.DIAGNOSTICS_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(email.toLowerCase());
+}
+
 const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface DiagnosticsSummary {

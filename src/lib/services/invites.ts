@@ -2,7 +2,7 @@ import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { blocks, circles, invitations, memberships, users } from "@/lib/db/schema";
 import { AppError } from "@/lib/errors";
-import { requireOwner } from "@/lib/authz";
+import { findActiveMembership, requireOwner } from "@/lib/authz";
 import { randomToken, sha256 } from "@/lib/hash";
 import { activeMemberCount, activeMembers, MEMBER_CAP } from "./circles";
 
@@ -95,6 +95,8 @@ export async function acceptInvite(token: string, user: { id: string; email: str
     if ((await activeMemberCount(invite.circleId, tx)) >= MEMBER_CAP) {
       throw new AppError("conflict", "This circle is full.");
     }
+    const existing = await findActiveMembership(user.id, invite.circleId, tx);
+    if (existing) return { circleId: invite.circleId };
     const now = new Date();
     await tx
       .insert(memberships)

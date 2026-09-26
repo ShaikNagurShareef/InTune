@@ -30,9 +30,17 @@ interface Props {
 
 export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode }: Props) {
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  // Every message seen in any poll, by id, so nothing falls into a gap between the newest page and older pages.
+  const [seen, setSeen] = useState(() => new Map(initialPage.messages.map((m) => [m.id, m])));
   const { data, mutate, error } = useSWR<FeedPage>(`/api/v1/circles/${circle.id}/messages`, fetcher, {
     fallbackData: initialPage,
     refreshInterval: POLL_MS,
+    onSuccess: (page) =>
+      setSeen((prev) => {
+        const next = new Map(prev);
+        for (const m of page.messages) next.set(m.id, m);
+        return next;
+      }),
   });
 
   return (
@@ -48,7 +56,7 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
             You may no longer have access to this circle, or you’re offline. New messages will appear when it’s back.
           </p>
         )}
-        <Feed circleId={circle.id} latest={data ?? initialPage} mutate={mutate} audioRate={prefs.audioRate} onReply={setReplyTo} />
+        <Feed circleId={circle.id} latest={data ?? initialPage} seen={[...seen.values()]} mutate={mutate} audioRate={prefs.audioRate} onReply={setReplyTo} />
         <Composer
           circle={circle}
           me={me}
