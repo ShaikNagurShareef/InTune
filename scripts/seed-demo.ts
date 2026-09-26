@@ -164,6 +164,22 @@ async function seed(): Promise<void> {
     { from: "maya", ago: 5 * H, text: "Thank you for tonight. I liked the quiet room.", tones: ["serious"] },
   ]);
 
+  // Mixed friends, scattered planning: the demo for "Plan it together" (AI turns this chat into one plan).
+  const hangout = await circleWith(ids, "priya", "Weekend Hangout 🌿", ["maya", "leo", "jordan"]);
+  await post(ids, hangout, [
+    { from: "priya", ago: 6 * H, text: "We should all hang out this weekend! Anyone free? 😊" },
+    { from: "jordan", ago: 6 * H - 12, text: "Sunday works for me. Saturday does not." },
+    { from: "maya", ago: 6 * H - 30, text: "Sunday is OK. Somewhere quiet please. Cafés are very loud on Sundays.", tones: ["just_asking"] },
+    { from: "leo", ago: 5 * H, text: "green light. park? I like the botanical garden" },
+    { from: "priya", ago: 5 * H - 5, text: "Ooh the botanical garden would be lovely!! Morning or afternoon?" },
+    { from: "jordan", ago: 5 * H - 20, text: "I need to know the start time and the end time." },
+    { from: "leo", ago: 4 * H, text: "morning better. less people" },
+    { from: "maya", ago: 4 * H - 10, text: "I can bring a picnic blanket and some snacks." },
+    { from: "priya", ago: 3 * H, text: "I'll drive anyone who needs a lift 🚗" },
+    { from: "leo", ago: 3 * H - 15, text: "I might need to leave early. not sure yet.", tones: ["no_reply_needed"] },
+    { from: "jordan", ago: 2 * H, text: "I can bring the card game Sushi Go. It is a quiet game." },
+  ]);
+
   // Autistic ↔ non-autistic family: indirect wording gets made concrete; the family learns tone tags.
   const family = await circleWith(ids, "priya", "Chen Family 🏡", ["maya", "grace"]);
   await post(ids, family, [

@@ -16,6 +16,8 @@ export interface NewDraft {
   sourceMode: SourceMode;
   sourceText: string;
   toneTags?: string[];
+  /** Wording written by AI (e.g. a group plan) in place of the source text; it can only be sent after exact approval. */
+  aiText?: string;
 }
 
 export async function createDraft(userId: string, input: NewDraft): Promise<Draft> {
@@ -35,8 +37,9 @@ export async function createDraft(userId: string, input: NewDraft): Promise<Draf
       replyToId: input.replyToId,
       sourceMode: input.sourceMode,
       sourceText: input.sourceText,
-      text: input.sourceText,
+      text: input.aiText ?? input.sourceText,
       toneTags: input.toneTags ?? [],
+      aiAssisted: input.aiText !== undefined,
     })
     .returning();
   return row;

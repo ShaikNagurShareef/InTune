@@ -18,6 +18,8 @@ interface Props {
   onDraftChange: (draft: Draft) => void;
   onApproveAndSend: (draft: Draft, acknowledged: boolean) => void;
   onBack: () => void;
+  /** "plan": a group plan drafted by AI from the conversation (no "you wrote" source to compare). */
+  variant?: "message" | "plan";
 }
 
 const PLACEHOLDER = /\[[^\]]*\?\]/;
@@ -63,7 +65,7 @@ function SavePhrase({ source, meaning }: { source: string; meaning: string }) {
 }
 
 /** Exact preview of text, tone and audience. Any edit creates a new version, so approval always matches what is shown (FR21). */
-export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSending, sendError, onDraftChange, onApproveAndSend, onBack }: Props) {
+export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSending, sendError, onDraftChange, onApproveAndSend, onBack, variant = "message" }: Props) {
   const [text, setText] = useState(draft.text);
   const [isEditing, setIsEditing] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -120,11 +122,13 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
     <section aria-labelledby="review-heading" className="space-y-4">
       <div className="flex items-center gap-2">
         <ShieldCheck aria-hidden="true" className="h-5 w-5 text-teal" />
-        <h3 id="review-heading" className="text-lg font-extrabold">{draft.aiAssisted ? "Check the translation" : "Check before sending"}</h3>
+        <h3 id="review-heading" className="text-lg font-extrabold">
+          {variant === "plan" ? "Check the plan before posting" : draft.aiAssisted ? "Check the translation" : "Check before sending"}
+        </h3>
         {draft.aiAssisted && <Tag tone="ai">AI-assisted</Tag>}
       </div>
 
-      {draft.aiAssisted && original && (
+      {variant === "message" && draft.aiAssisted && original && (
         <div className="rounded-3xl border border-line p-4">
           <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-ink-2">You wrote</p>
           <p className="font-read whitespace-pre-wrap text-lg">{original}</p>
@@ -227,10 +231,10 @@ export function ReviewPanel({ draft, circleName, memberNames, replyLabel, isSend
           className="bg-brand ml-auto inline-flex min-h-12 items-center gap-2 rounded-xl px-5 font-extrabold text-on-brand shadow-[var(--shadow)] hover:brightness-110 disabled:opacity-40"
         >
           <Send aria-hidden="true" className="h-4 w-4" />
-          {isSending ? "Sending… not sent yet" : draft.aiAssisted ? "Approve and send" : "Send"}
+          {isSending ? "Sending… not sent yet" : variant === "plan" ? "Approve and post" : draft.aiAssisted ? "Approve and send" : "Send"}
         </button>
       </div>
-      {draft.aiAssisted && original && <SavePhrase source={original} meaning={text} />}
+      {variant === "message" && draft.aiAssisted && original && <SavePhrase source={original} meaning={text} />}
     </section>
   );
 }

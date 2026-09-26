@@ -14,6 +14,7 @@ import {
   rankOpenAiModels,
 } from "./openai";
 import { ATTEMPT_TIMEOUT_MS, DEFAULT_MODEL, MAX_OUTPUT_TOKENS, MAX_TRANSIENT_RETRIES } from "./config";
+import { LLAMA_KEY_PATTERN, defaultLlamaModel, listLlamaModels, llamaClient, llamaGenerate, rankLlamaModels } from "./llama";
 
 export const KEY_HEADER = "x-gemini-key";
 export const MODEL_HEADER = "x-gemini-model";
@@ -21,7 +22,7 @@ export const OPENAI_KEY_HEADER = "x-openai-key";
 export const PROVIDER_HEADER = "x-ai-provider";
 export const AI_MODEL_HEADER = "x-ai-model";
 
-export type AiProviderId = "gemini" | "openai";
+export type AiProviderId = "gemini" | "openai" | "llama";
 
 // Classic "AIza…" keys and newer dotted "AQ.…" keys; header-safe characters only.
 const KEY_PATTERN = /^[A-Za-z0-9._-]{20,256}$/;
@@ -45,15 +46,28 @@ export interface GeminiCredentials {
 
 const serverGeminiKey = () => process.env.GEMINI_API_KEY?.trim() ?? "";
 const serverOpenAiKey = () => process.env.OPENAI_API_KEY?.trim() ?? "";
+const serverLlamaKey = () => process.env.LLAMA_API_KEY?.trim() ?? "";
 
-/** The operator's shared keys (Vercel env GEMINI_API_KEY / OPENAI_API_KEY), used only without a personal key. */
+/** The operator's shared keys, in the order they're tried: Gemini, then OpenAI, then (optional) Llama. */
+function sharedKeys(): { provider: AiProviderId; apiKey: string }[] {
+  const keys: { provider: AiProviderId; apiKey: string }[] = [];
+  if (KEY_PATTERN.test(serverGeminiKey())) keys.push({ provider: "gemini", apiKey: serverGeminiKey() });
+  if (OPENAI_KEY_PATTERN.test(serverOpenAiKey())) keys.push({ provider: "openai", apiKey: serverOpenAiKey() });
+  if (LLAMA_KEY_PATTERN.test(serverLlamaKey())) keys.push({ provider: "llama", apiKey: serverLlamaKey() });
+  return keys;
+}
+
+const defaultModelFor = (provider: AiProviderId, apiKey: string): string =>
+  provider === "openai" ? DEFAULT_OPENAI_MODEL : provider === "llama" ? defaultLlamaModel(apiKey) : DEFAULT_MODEL;
+
+/** The operator's shared keys (Vercel env GEMINI_API_KEY / OPENAI_API_KEY / optional LLAMA_API_KEY), used only without a personal key. */
 export function serverKeyAvailable(): boolean {
-  return KEY_PATTERN.test(serverGeminiKey()) || OPENAI_KEY_PATTERN.test(serverOpenAiKey()) || e2eStubEnabled();
+  return sharedKeys().length > 0 || e2eStubEnabled();
 }
 
 /**
  * Picks credentials for this request. Order: the person's own key for their chosen provider, their other
- * own key, the shared Gemini key, then the shared OpenAI key. Keys are used for this call only.
+ * own key, then the shared keys (Gemini, OpenAI, then optional Llama — each a fallback for the one before). Keys are used for this call only.
  */
 export function credentialsFromRequest(req: Request): GeminiCredentials {
   const preferred: AiProviderId = req.headers.get(PROVIDER_HEADER)?.trim() === "openai" ? "openai" : "gemini";
@@ -79,16 +93,15 @@ export function credentialsFromRequest(req: Request): GeminiCredentials {
   if (hasOpenAi) return ownOpenAi();
   if (hasGemini) return ownGemini();
 
-  const sharedGemini = KEY_PATTERN.test(serverGeminiKey());
-  const sharedOpenAi = OPENAI_KEY_PATTERN.test(serverOpenAiKey());
-  if (sharedGemini) {
-    return withOther(
-      { provider: "gemini", apiKey: serverGeminiKey(), model: DEFAULT_MODEL, source: "server" },
-      sharedOpenAi ? { provider: "openai", apiKey: serverOpenAiKey() } : null,
-    );
-  }
-  if (sharedOpenAi) {
-    return { provider: "openai", apiKey: serverOpenAiKey(), model: DEFAULT_OPENAI_MODEL, source: "server" };
+  const [primary, ...rest] = sharedKeys();
+  if (primary) {
+    return {
+      provider: primary.provider,
+      apiKey: primary.apiKey,
+      model: defaultModelFor(primary.provider, primary.apiKey),
+      source: "server",
+      ...(rest.length ? { alternates: rest } : {}),
+    };
   }
   // Playwright only: the scripted stand-in acts as the shared key (never enabled in production).
   if (e2eStubEnabled()) return { provider: "gemini", apiKey: "e2e-stub-transport", model: DEFAULT_MODEL, source: "server" };
@@ -153,9 +166,11 @@ async function resolveModels(provider: AiProviderId, apiKey: string, fallbackMod
   const key = keyHash(provider, apiKey);
   let pending = modelCache.get(key);
   if (!pending) {
-    pending = (provider === "openai" ? listOpenAiModels(apiKey) : listModels(apiKey))
+    const lister = provider === "openai" ? listOpenAiModels : provider === "llama" ? listLlamaModels : listModels;
+    const ranker = provider === "openai" ? rankOpenAiModels : provider === "llama" ? rankLlamaModels : rankModels;
+    pending = lister(apiKey)
       .then((names) => {
-        const ranked = (provider === "openai" ? rankOpenAiModels(names) : rankModels(names)).slice(0, MAX_MODEL_CANDIDATES);
+        const ranked = ranker(names).slice(0, MAX_MODEL_CANDIDATES);
         return ranked.length ? ranked : [fallbackModel];
       })
       .catch(() => [fallbackModel]);
@@ -179,8 +194,9 @@ async function routesFor(creds: GeminiCredentials, req: GenerateRequest): Promis
   const routes: Route[] = [];
   for (const k of keys) {
     if (hasMedia(req.parts) && k.provider !== "gemini") continue;
-    const fallback = k.provider === "openai" ? DEFAULT_OPENAI_MODEL : DEFAULT_MODEL;
-    const explicit = k.primary && creds.explicitModel ? creds.model : undefined;
+    const fallback = defaultModelFor(k.provider, k.apiKey);
+    const pinnedLlama = k.provider === "llama" ? process.env.LLAMA_MODEL?.trim() : undefined;
+    const explicit = (k.primary && creds.explicitModel ? creds.model : undefined) ?? (pinnedLlama || undefined);
     const keyId = keyHash(k.provider, k.apiKey).slice(0, 12);
     for (const model of await resolveModels(k.provider, k.apiKey, fallback, explicit)) {
       routes.push({ provider: k.provider, model, keyId, apiKey: k.apiKey });
@@ -201,6 +217,9 @@ function textOnly(parts: Part[]): string {
 async function callRoute(route: Route, req: GenerateRequest): Promise<string> {
   const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
   const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+  if (route.provider === "llama") {
+    return llamaGenerate(llamaClient(route.apiKey), route.model, { system: req.system, text: textOnly(req.parts), jsonSchema: req.jsonSchema, signal });
+  }
   if (route.provider === "openai") {
     return openAiGenerate(openAiClient(route.apiKey), route.model, { system: req.system, text: textOnly(req.parts), jsonSchema: req.jsonSchema, signal });
   }
@@ -269,7 +288,7 @@ function isTransient(err: unknown): boolean {
 function logProviderError(err: unknown): void {
   const status = statusOf(err);
   const raw = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-  const scrubbed = raw.replace(/AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z._-]{20,}|sk-[0-9A-Za-z_-]{20,}/g, "<key>").slice(0, 300);
+  const scrubbed = raw.replace(/AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z._-]{20,}|sk-[0-9A-Za-z_-]{20,}|gsk_[0-9A-Za-z]{20,}|LLM\|[^\s"']+|tgp_[0-9A-Za-z_-]{20,}/g, "<key>").slice(0, 300);
   console.warn(`[ai] provider error status=${status ?? "none"} ${scrubbed}`);
 }
 

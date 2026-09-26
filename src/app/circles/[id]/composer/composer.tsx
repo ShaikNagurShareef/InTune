@@ -9,6 +9,7 @@ import { CheckCircle2, CircleHelp, Eraser, FileAudio, LayoutGrid, Loader2, Mic, 
 import { Button, Notice, inputClass } from "@/components/ui";
 import type { CircleInfo, Me, PhraseLite, ReplyTarget } from "../types";
 import { Recorder, type Capture } from "./recorder";
+import { approveAndPublish } from "./send";
 import { ReviewPanel } from "./review-panel";
 import { SymbolBoard } from "./symbol-board";
 import { ChosenTones, ModeBar, QuickReplies, TonePicker, TranslateButton, WordingMenu } from "./composer-parts";
@@ -270,35 +271,13 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
     setIsSending(true);
     setSendError(null);
     try {
-      // A retry after a lost response must reuse the same approval and key, so the server replays one message.
-      const scope = `${current.id}:${current.version}`;
-      let approvalId = approvals.current.get(scope);
-      if (!approvalId) {
-        const approval = await api<{ approval_id: string }>(`/api/v1/drafts/${current.id}/approve`, {
-          body: { expected_version: current.version, previewed_text: current.text, acknowledged_flags: acknowledged },
-        });
-        approvalId = approval.approval_id;
-        approvals.current.set(scope, approvalId);
-      }
-      await api(`/api/v1/messages`, {
-        body: {
-          circle_id: circle.id,
-          text: current.text,
-          reply_to_id: current.replyToId,
-          tone_tags: current.toneTags,
-          draft_id: current.id,
-          approval_id: current.aiAssisted ? approvalId : null,
-        },
-        idempotencyKey: keyFor(scope),
-      });
+      await approveAndPublish(circle.id, current, acknowledged, { approvals: approvals.current, keys: sendKeys.current });
       resetAll();
       setSentNote("Sent.");
       onSent();
     } catch (err) {
       setSendError(`Not sent. ${describe(err)}`);
       if (err instanceof ApiError && err.code === "stale_version") {
-        approvals.current.delete(`${current.id}:${current.version}`);
-        sendKeys.current.delete(`${current.id}:${current.version}`);
         setDraft(await api<Draft>(`/api/v1/drafts/${current.id}`).catch(() => current));
       }
     } finally {

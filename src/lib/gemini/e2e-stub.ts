@@ -1,5 +1,5 @@
 import type { GeminiTransport } from "./client";
-import { CHECK_SYSTEM, COMPOSE_SYSTEM, LIVE_INTERPRET_SYSTEM, LIVE_SAY_SYSTEM, SIMPLIFY_SYSTEM } from "./prompts";
+import { CHECK_SYSTEM, COMPOSE_SYSTEM, LIVE_INTERPRET_SYSTEM, LIVE_SAY_SYSTEM, PLAN_SYSTEM, SIMPLIFY_SYSTEM } from "./prompts";
 
 /**
  * Deterministic stand-in for Gemini used only by Playwright tests (INTUNE_E2E_GEMINI_STUB=1 outside production).
@@ -19,6 +19,19 @@ export const e2eStubTransport: GeminiTransport = {
         asking: "Will you come to dinner on Friday, and is sitting outside OK?",
         reply_expected: "yes",
         unclear: "",
+      });
+    }
+    if (req.system === PLAN_SYSTEM) {
+      const members = (JSON.parse(input) as { members: { name: string }[] }).members.map((m) => m.name);
+      return JSON.stringify({
+        title: "Sunday picnic",
+        when: "Sunday",
+        where: "",
+        what: "Picnic and a quiet card game",
+        bring: [{ who: members[0], item: "snacks" }],
+        comfort: [{ who: members[1] ?? members[0], need: "a quiet place", how: "We meet outdoors, away from loud cafés" }],
+        open_questions: [{ question: "Can we meet from 10:00 am to 12:00 pm?", ask: "everyone" }],
+        suggestions: ["A morning start, when it is less busy"],
       });
     }
     if (req.system === LIVE_INTERPRET_SYSTEM) {

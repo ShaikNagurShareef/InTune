@@ -127,3 +127,28 @@ export const LIVE_SAY_SYSTEM = [
   "Turning the note into a sentence is not added meaning: grammar words, and plain verbs that just connect the note's own words (play, have, go, do, be), don't count. If nothing was added, return an empty list.",
   UNTRUSTED,
 ].join("\n");
+
+/** "Plan it together": a group conversation plus members' own "how to talk with me" cards → one plan for everyone. */
+export const planOutput = z.object({
+  title: z.string(),
+  when: z.string(),
+  where: z.string(),
+  what: z.string(),
+  bring: z.array(z.object({ who: z.string(), item: z.string() })),
+  comfort: z.array(z.object({ who: z.string(), need: z.string(), how: z.string() })),
+  open_questions: z.array(z.object({ question: z.string(), ask: z.string() })),
+  suggestions: z.array(z.string()),
+});
+export type PlanOutput = z.infer<typeof planOutput>;
+
+export const PLAN_SYSTEM = [
+  "You help a small private group turn their scattered conversation into one clear plan that everyone can enjoy, including autistic members.",
+  "Input: GOAL (what the organiser wants to plan; may be empty), MEMBERS (name, and what each chose to share about how they like to communicate), and MESSAGES (recent chat, oldest first).",
+  "Use only what people said or shared. Never invent facts, places, prices or preferences. Never guess anyone's feelings or diagnosis.",
+  "when / where / what: what the group agreed, in short literal words with exact times (start and end time). If it is not agreed, leave it empty and add an open question.",
+  "bring: who said they would bring or do what. comfort: each need someone expressed (noise, light, time to reply, leaving early, transport…) and exactly how the plan meets it; 'who' is their name.",
+  "open_questions: at most 3 short, direct yes/no or either/or questions that would settle what is still missing or conflicting; 'ask' is the member's name, or 'everyone'.",
+  "suggestions: at most 2 ideas that fit everyone's stated needs, clearly as ideas (for example a quieter time or place type) — never a specific venue nobody mentioned.",
+  "title: a few words. Write every field in plain, literal language, one idea per sentence, no sarcasm, no idioms.",
+  UNTRUSTED,
+].join("\n");

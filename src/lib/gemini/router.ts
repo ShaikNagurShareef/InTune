@@ -1,5 +1,5 @@
 /**
- * Multi-model router with automatic fallback (Gemini ⇄ OpenAI, several models each).
+ * Multi-model router with automatic fallback (Gemini ⇄ OpenAI ⇄ optional Llama, several models each).
  *
  * Each route is one model on one key. When a route is rate-limited (429), overloaded (5xx / timeout) or
  * retired (404), it is benched for a cooldown — honouring the provider's own "retry after" hint when it
@@ -10,7 +10,7 @@
  * Health is kept in memory per server instance: cheap, no content, no keys (only a short key hash).
  */
 
-export type ProviderId = "gemini" | "openai";
+export type ProviderId = "gemini" | "openai" | "llama";
 
 export interface RouteRef {
   provider: ProviderId;

@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@/lib/client/media-query";
 import useSWR from "swr";
-import { ArrowLeft, Info, Phone, PhoneCall, Video, X } from "lucide-react";
+import { ArrowLeft, CalendarCheck, Info, Phone, PhoneCall, Video, X } from "lucide-react";
 import { fetcher } from "@/lib/client/api";
 import { statusInfo } from "@/lib/social";
 import { Avatar } from "@/components/avatar";
@@ -15,6 +15,7 @@ import type { InputMode } from "./composer/types";
 import { DirectPanel } from "./direct-panel";
 import { Feed } from "./feed";
 import { MembersPanel } from "./members-panel";
+import { PlanSheet } from "./plan-sheet";
 import type { CircleInfo, FeedPage, Me, PhraseLite, ReplyTarget } from "./types";
 
 const POLL_MS = 3000;
@@ -47,6 +48,7 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
   const params = useSearchParams();
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [showDetails, setShowDetails] = useState(params.get("details") === "1");
+  const [showPlan, setShowPlan] = useState(false);
   const { data: callData } = useSWR<{ call: ActiveCall | null }>(callsEnabled ? `/api/v1/circles/${circle.id}/calls` : null, fetcher, {
     refreshInterval: CALL_POLL_MS,
   });
@@ -64,8 +66,8 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
       }),
   });
 
-  // Wide screens show details inline; smaller ones as an overlay (only one is ever rendered).
-  const isWide = useMediaQuery("(min-width: 1280px)");
+  // Very wide screens show details inline; others as an overlay, so the conversation keeps its room.
+  const isWide = useMediaQuery("(min-width: 1536px)");
   useEffect(() => {
     if (!showDetails || isWide) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setShowDetails(false);
@@ -105,6 +107,15 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
               </Link>
             </>
           )}
+          <button
+            type="button"
+            aria-label="Plan it together"
+            title="Plan it together"
+            onClick={() => setShowPlan(true)}
+            className="grid h-11 w-11 place-items-center rounded-full text-ai hover:bg-paper-2"
+          >
+            <CalendarCheck aria-hidden="true" className="h-6 w-6" />
+          </button>
           <button
             type="button"
             aria-label={showDetails ? "Hide details" : "Show details"}
@@ -156,6 +167,7 @@ export function CircleView({ me, circle, initialPage, prefs, phrases, uploadMode
         </div>
       </section>
 
+      {showPlan && <PlanSheet circle={circle} me={me} onClose={() => setShowPlan(false)} onPosted={() => void mutate()} />}
       {showDetails && isWide && (
         <aside aria-label="Details" className="w-[340px] shrink-0 overflow-y-auto border-l border-line">
           {details}

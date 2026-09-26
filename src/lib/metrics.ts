@@ -8,6 +8,7 @@ export type MetricKind =
   | "approval_rejected"
   | "send"
   | "simplify"
+  | "plan"
   | "report_created";
 
 /** Content-free operational events: never message text, prompts, media or keys (spec §10 observability). */
