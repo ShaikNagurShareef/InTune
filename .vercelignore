@@ -1,0 +1,6 @@
+.env*
+!.env.example
+.data
+test-results
+playwright-report
+*.docx
