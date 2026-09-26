@@ -157,7 +157,7 @@ export function Composer({ circle, me, replyTo, onClearReply, phrases, defaultMo
       }
       return;
     }
-    setError(MANUAL_REASONS[next.errorCode ?? ""] ?? "Wording help stopped. Your words are kept — you can send them yourself.");
+    setError(MANUAL_REASONS[next.errorCode ?? ""] ?? "Translation stopped. Your words are kept — you can send them yourself.");
     setStage("compose");
   };
 

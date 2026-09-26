@@ -158,7 +158,7 @@ export function PreferencesForm({ initial, afterSave }: { initial: Prefs; afterS
       <Choice legend="How do you usually start a message?" name="inputMode" options={INPUT_MODES} value={prefs.inputMode} onChange={(v) => update("inputMode", v)} />
       <ThemePicker value={prefs.theme} onChange={(v) => update("theme", v)} />
       <Choice legend="Text size" name="textSize" options={TEXT_SIZES} value={prefs.textSize} onChange={(v) => update("textSize", v)} />
-      <Choice legend="Wording help should use" name="sentenceLength" options={LENGTHS} value={prefs.sentenceLength} onChange={(v) => update("sentenceLength", v)} />
+      <Choice legend="Translations should use" name="sentenceLength" options={LENGTHS} value={prefs.sentenceLength} onChange={(v) => update("sentenceLength", v)} />
       <div>
         <label htmlFor="rate" className="mb-2 block font-bold">
           Speaking speed: {prefs.audioRate.toFixed(2)}×
