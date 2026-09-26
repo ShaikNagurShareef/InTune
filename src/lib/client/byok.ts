@@ -3,12 +3,15 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * BYOK Gemini key, kept only in this browser's localStorage. It is sent per request in a header to
- * InTune's own server routes and is never stored server-side. Every access is guarded because storage
- * can be unavailable (private windows, blocked site data).
+ * Personal AI keys (Google Gemini and/or OpenAI), kept only in this browser's localStorage. They are sent
+ * per request in headers to InTune's own server routes and never stored server-side. Every access is
+ * guarded because storage can be unavailable (private windows, blocked site data).
  */
-const KEY = "intune.gemini.key";
-const MODEL = "intune.gemini.model";
+export type AiProviderId = "gemini" | "openai";
+
+const KEYS: Record<AiProviderId, string> = { gemini: "intune.gemini.key", openai: "intune.openai.key" };
+const MODELS: Record<AiProviderId, string> = { gemini: "intune.gemini.model", openai: "intune.openai.model" };
+const PROVIDER = "intune.ai.provider";
 const CONSENT = "intune.media.consent";
 const EVENT = "intune-byok-change";
 
@@ -25,24 +28,37 @@ function write(name: string, value: string | null): void {
     if (value === null) window.localStorage.removeItem(name);
     else window.localStorage.setItem(name, value);
   } catch {
-    // Storage unavailable: the key simply is not remembered.
+    // Storage unavailable: the value simply is not remembered.
   }
   window.dispatchEvent(new Event(EVENT));
 }
 
-export const getGeminiKey = (): string | null => read(KEY);
-export const getGeminiModel = (): string | null => read(MODEL);
-export const setGeminiKey = (key: string | null): void => write(KEY, key);
-export const setGeminiModel = (model: string | null): void => write(MODEL, model);
+export const getProvider = (): AiProviderId => (read(PROVIDER) === "openai" ? "openai" : "gemini");
+export const setProvider = (p: AiProviderId): void => write(PROVIDER, p);
+export const getKey = (p: AiProviderId): string | null => read(KEYS[p]);
+export const setKey = (p: AiProviderId, key: string | null): void => write(KEYS[p], key);
+export const getModel = (p: AiProviderId): string | null => read(MODELS[p]);
+export const setModel = (p: AiProviderId, model: string | null): void => write(MODELS[p], model);
+
+// Back-compat helpers (Gemini).
+export const getGeminiKey = (): string | null => getKey("gemini");
+export const setGeminiKey = (key: string | null): void => setKey("gemini", key);
+export const setGeminiModel = (model: string | null): void => setModel("gemini", model);
+
 export const hasMediaConsent = (): boolean => read(CONSENT) === "gemini-processing-v1";
 export const setMediaConsent = (on: boolean): void => write(CONSENT, on ? "gemini-processing-v1" : null);
 
+/** Headers for AI requests: chosen provider, any personal keys, and the chosen provider's model. */
 export function geminiHeaders(): Record<string, string> {
-  const key = getGeminiKey();
-  const model = getGeminiModel();
+  const provider = getProvider();
+  const gemini = getKey("gemini");
+  const openai = getKey("openai");
+  const model = getModel(provider);
   return {
-    ...(key ? { "x-gemini-key": key } : {}),
-    ...(model ? { "x-gemini-model": model } : {}),
+    "x-ai-provider": provider,
+    ...(gemini ? { "x-gemini-key": gemini } : {}),
+    ...(openai ? { "x-openai-key": openai } : {}),
+    ...(model ? { "x-ai-model": model } : {}),
   };
 }
 
@@ -55,24 +71,28 @@ function subscribe(cb: () => void): () => void {
   };
 }
 
-/** True when a key is saved in this browser. Server render assumes no key. */
+/** True when this browser holds a personal key for any provider. Server render assumes none. */
 export function useHasGeminiKey(): boolean {
-  return useSyncExternalStore(subscribe, () => Boolean(getGeminiKey()), () => false);
+  return useSyncExternalStore(subscribe, () => Boolean(getKey("gemini") || getKey("openai")), () => false);
 }
 
-export function useGeminiModel(): string | null {
-  return useSyncExternalStore(subscribe, getGeminiModel, () => null);
+export function useProvider(): AiProviderId {
+  return useSyncExternalStore(subscribe, getProvider, () => "gemini");
+}
+
+export function useModel(p: AiProviderId): string | null {
+  return useSyncExternalStore(subscribe, () => getModel(p), () => null);
 }
 
 export function maskKey(key: string): string {
   return key.length <= 8 ? "••••" : `${key.slice(0, 4)}••••••${key.slice(-4)}`;
 }
 
-export function useMaskedKey(): string | null {
+export function useMaskedKey(p: AiProviderId = "gemini"): string | null {
   return useSyncExternalStore(
     subscribe,
     () => {
-      const key = getGeminiKey();
+      const key = getKey(p);
       return key ? maskKey(key) : null;
     },
     () => null,

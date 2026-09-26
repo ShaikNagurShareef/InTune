@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <PageTitle eyebrow="AI translation" title="AI settings">
-        Translation, transcription and plain-words reading help use Google Gemini. Use InTune’s built-in AI, or your own key.
+        Translation, transcription and plain-words reading help use Google Gemini or OpenAI. Use InTune’s built-in AI, or your own key.
       </PageTitle>
       <KeySettings />
     </div>

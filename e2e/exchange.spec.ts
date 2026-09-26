@@ -19,7 +19,7 @@ async function signUp(browser: Browser, name: string): Promise<{ page: Page; ema
 
 async function addKey(page: Page) {
   await page.goto("/settings");
-  await page.getByLabel("Paste your Gemini API key").fill(FAKE_KEY);
+  await page.getByLabel(/Paste your Google Gemini API key/).fill(FAKE_KEY);
   await page.getByRole("button", { name: "Check and save" }).click();
   await expect(page.getByText("Key works.")).toBeVisible();
 }
@@ -95,8 +95,9 @@ test("G1: compose → clarify → approve → receive → understand → reply",
   await sendMine(ana.page, "Yes! Outside on Friday works.");
 
   // Ben sees the reply appear by polling.
-  await expect(ben.page.getByText("Yes! Outside on Friday works.")).toBeVisible({ timeout: 15_000 });
-  await expect(ben.page.getByText(/Replied to you/)).toBeVisible();
+  const benThread = ben.page.getByRole("region", { name: "Dinner plans" });
+  await expect(benThread.getByText("Yes! Outside on Friday works.")).toBeVisible({ timeout: 15_000 });
+  await expect(benThread.getByText(/Replied to you/)).toBeVisible();
 });
 
 test("sending your own words works using only the keyboard", async ({ browser }) => {
@@ -140,5 +141,5 @@ test("direct chat: start from New, unread in the list, tone tags, reply", async 
   await expect(max.page.getByText("Just us: are you free Sunday?")).toBeVisible();
   await expect(max.page.getByRole("list", { name: "Tone chosen by the sender" }).getByText("No rush")).toBeVisible();
   await sendMine(max.page, "Yes, Sunday works");
-  await expect(zoe.page.getByText("Yes, Sunday works")).toBeVisible({ timeout: 15_000 });
+  await expect(zoe.page.getByRole("region", { name: "Max" }).getByText("Yes, Sunday works")).toBeVisible({ timeout: 15_000 });
 });

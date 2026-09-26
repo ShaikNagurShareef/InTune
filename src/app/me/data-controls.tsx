@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/client/api";
-import { setGeminiKey } from "@/lib/client/byok";
+import { setKey } from "@/lib/client/byok";
 import { Button, Notice } from "@/components/ui";
 
 export function BlockedList({ initial }: { initial: { id: string; displayName: string }[] }) {
@@ -43,7 +43,8 @@ export function DataControls() {
   const deleteAccount = async () => {
     if (!confirm("Delete your account? Your messages become “deleted”, your phrasebook and drafts are erased, and you are signed out. This cannot be undone.")) return;
     await api("/api/v1/account", { method: "DELETE" });
-    setGeminiKey(null);
+    setKey("gemini", null);
+    setKey("openai", null);
     router.push("/");
     router.refresh();
   };

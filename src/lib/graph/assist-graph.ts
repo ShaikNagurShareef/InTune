@@ -43,6 +43,8 @@ export interface AssistDeps {
   creds: GeminiCredentials;
   signal?: AbortSignal;
   mediaPart(mediaId: string): Promise<{ part: Part; cleanup(): Promise<void> }>;
+  /** Providers that can't read recordings directly (OpenAI) transcribe them first. */
+  transcribe?: (mediaId: string) => Promise<string>;
   findPhrases(ownerId: string, text: string): Promise<PhraseRef[]>;
   onStage(stage: string): Promise<void>;
   onModelCall(node: string, ms: number, repaired: boolean, model: string): void;
@@ -81,6 +83,10 @@ export type AssistInterrupt =
 
 export type TranscriptResume = { transcript: string };
 export type ClarifyResume = { answer: string };
+
+/** Single grammar words ("is", "at") are needed to form sentences; flagging them would only add friction. */
+const GRAMMAR_WORDS = new Set(["a", "an", "the", "is", "are", "am", "was", "be", "at", "to", "in", "on", "of", "for", "i", "i'm", "will", "it", "and", "that", "this", "we", "you"]);
+const isGrammarWord = (flag: string) => GRAMMAR_WORDS.has(flag.toLowerCase().replace(/[“”"'.,!?]/g, "").trim());
 
 const NO_CHECK = {
   meaning_preserved: true,
@@ -121,6 +127,11 @@ export function buildAssistGraph(deps: AssistDeps, checkpointer: BaseCheckpointS
   const interpret = async (s: AssistStateType) => {
     if (!isMedia(s.sourceMode) || !s.mediaId) return { transcript: s.sourceText, transcriptSpans: [] };
     await deps.onStage("Listening to your recording");
+    if (deps.transcribe) {
+      const transcript = (await deps.transcribe(s.mediaId)).trim();
+      if (!transcript) return { manualReason: "no_speech" as const };
+      return { transcript: transcript.slice(0, MAX_MESSAGE_CHARS), transcriptSpans: [] };
+    }
     const { part, cleanup } = await deps.mediaPart(s.mediaId);
     try {
       const out = await timed("interpret", () =>
@@ -201,7 +212,7 @@ export function buildAssistGraph(deps: AssistDeps, checkpointer: BaseCheckpointS
     });
     const evidence = [s.transcript, ...s.answers.map((a) => a.answer)].join("\n");
     const slots = diffSlots(evidence, draft.replace(/\[[^\]]*\?\]/g, ""));
-    const unique = (xs: string[]) => [...new Set(xs.map((x) => x.trim()).filter(Boolean))];
+    const unique = (xs: string[]) => [...new Set(xs.map((x) => x.trim()).filter((x) => x && !isGrammarWord(x)))];
     const flags: MeaningFlags = {
       unsupportedAdditions: unique([
         ...(s.composed?.unsupported_additions ?? []),

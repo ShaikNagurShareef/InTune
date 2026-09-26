@@ -3,10 +3,24 @@ import { z, type ZodType } from "zod";
 import { AppError } from "@/lib/errors";
 import { e2eStubEnabled, e2eStubTransport } from "./e2e-stub";
 import { createHash } from "node:crypto";
+import {
+  DEFAULT_OPENAI_MODEL,
+  OPENAI_KEY_PATTERN,
+  isOpenAiModel,
+  listOpenAiModels,
+  openAiClient,
+  openAiGenerate,
+  rankOpenAiModels,
+} from "./openai";
 import { ATTEMPT_TIMEOUT_MS, DEFAULT_MODEL, MAX_OUTPUT_TOKENS, MAX_TRANSIENT_RETRIES } from "./config";
 
 export const KEY_HEADER = "x-gemini-key";
 export const MODEL_HEADER = "x-gemini-model";
+export const OPENAI_KEY_HEADER = "x-openai-key";
+export const PROVIDER_HEADER = "x-ai-provider";
+export const AI_MODEL_HEADER = "x-ai-model";
+
+export type AiProviderId = "gemini" | "openai";
 
 // Classic "AIza…" keys and newer dotted "AQ.…" keys; header-safe characters only.
 const KEY_PATTERN = /^[A-Za-z0-9._-]{20,256}$/;
@@ -17,6 +31,8 @@ const MODEL_PATTERN = /^(models\/)?gemini-[a-z0-9.-]{1,60}$/;
  * `source` is "user" for a key the person brought (always preferred) or "server" for the operator's shared key.
  */
 export interface GeminiCredentials {
+  /** Which AI provider this key belongs to (defaults to Gemini). */
+  readonly provider?: AiProviderId;
   readonly apiKey: string;
   readonly model: string;
   readonly source?: "user" | "server";
@@ -24,22 +40,46 @@ export interface GeminiCredentials {
   readonly explicitModel?: boolean;
 }
 
-/** The operator's shared key (Vercel env GEMINI_API_KEY), used only when a person hasn't brought their own. */
+const serverGeminiKey = () => process.env.GEMINI_API_KEY?.trim() ?? "";
+const serverOpenAiKey = () => process.env.OPENAI_API_KEY?.trim() ?? "";
+
+/** The operator's shared keys (Vercel env GEMINI_API_KEY / OPENAI_API_KEY), used only without a personal key. */
 export function serverKeyAvailable(): boolean {
-  return KEY_PATTERN.test(process.env.GEMINI_API_KEY?.trim() ?? "") || e2eStubEnabled();
+  return KEY_PATTERN.test(serverGeminiKey()) || OPENAI_KEY_PATTERN.test(serverOpenAiKey()) || e2eStubEnabled();
 }
 
+/**
+ * Picks credentials for this request. Order: the person's own key for their chosen provider, their other
+ * own key, the shared Gemini key, then the shared OpenAI key. Keys are used for this call only.
+ */
 export function credentialsFromRequest(req: Request): GeminiCredentials {
-  const requested = req.headers.get(MODEL_HEADER)?.trim();
-  const explicitModel = Boolean(requested && MODEL_PATTERN.test(requested));
-  const model = explicitModel && requested ? requested.replace(/^models\//, "") : DEFAULT_MODEL;
-  const userKey = req.headers.get(KEY_HEADER)?.trim() ?? "";
-  if (KEY_PATTERN.test(userKey)) return { apiKey: userKey, model, source: "user", explicitModel };
-  const serverKey = process.env.GEMINI_API_KEY?.trim() ?? "";
-  if (KEY_PATTERN.test(serverKey)) return { apiKey: serverKey, model: DEFAULT_MODEL, source: "server" };
+  const preferred: AiProviderId = req.headers.get(PROVIDER_HEADER)?.trim() === "openai" ? "openai" : "gemini";
+  const requested = (req.headers.get(AI_MODEL_HEADER) ?? req.headers.get(MODEL_HEADER))?.trim().replace(/^models\//, "") ?? "";
+  const geminiKey = req.headers.get(KEY_HEADER)?.trim() ?? "";
+  const openAiKey = req.headers.get(OPENAI_KEY_HEADER)?.trim() ?? "";
+
+  const ownGemini = (): GeminiCredentials => {
+    const explicitModel = MODEL_PATTERN.test(requested) && preferred === "gemini";
+    return { provider: "gemini", apiKey: geminiKey, model: explicitModel ? requested : DEFAULT_MODEL, source: "user", explicitModel };
+  };
+  const ownOpenAi = (): GeminiCredentials => {
+    const explicitModel = isOpenAiModel(requested) && preferred === "openai";
+    return { provider: "openai", apiKey: openAiKey, model: explicitModel ? requested : DEFAULT_OPENAI_MODEL, source: "user", explicitModel };
+  };
+  const hasGemini = KEY_PATTERN.test(geminiKey);
+  const hasOpenAi = OPENAI_KEY_PATTERN.test(openAiKey);
+  if (preferred === "openai" && hasOpenAi) return ownOpenAi();
+  if (preferred === "gemini" && hasGemini) return ownGemini();
+  if (hasOpenAi) return ownOpenAi();
+  if (hasGemini) return ownGemini();
+
+  if (KEY_PATTERN.test(serverGeminiKey())) return { provider: "gemini", apiKey: serverGeminiKey(), model: DEFAULT_MODEL, source: "server" };
+  if (OPENAI_KEY_PATTERN.test(serverOpenAiKey())) {
+    return { provider: "openai", apiKey: serverOpenAiKey(), model: DEFAULT_OPENAI_MODEL, source: "server" };
+  }
   // Playwright only: the scripted stand-in acts as the shared key (never enabled in production).
-  if (e2eStubEnabled()) return { apiKey: "e2e-stub-transport", model: DEFAULT_MODEL, source: "server" };
-  throw new AppError("ai_key_missing", "AI translation isn't set up yet. Add a Gemini key in Settings — you can still send your own words.");
+  if (e2eStubEnabled()) return { provider: "gemini", apiKey: "e2e-stub-transport", model: DEFAULT_MODEL, source: "server" };
+  throw new AppError("ai_key_missing", "AI translation isn't set up yet. Add a Gemini or OpenAI key in Settings — you can still send your own words.");
 }
 
 /** Generates structured JSON. Tests replace this through `setGeminiTransport`. */
@@ -88,7 +128,8 @@ export function pickModel(names: string[]): string | null {
 
 const MAX_MODEL_CANDIDATES = 3;
 const modelCache = new Map<string, Promise<string[]>>();
-const cacheKeyFor = (creds: GeminiCredentials) => createHash("sha256").update(creds.apiKey).digest("hex");
+const cacheKeyFor = (creds: GeminiCredentials) =>
+  createHash("sha256").update(`${creds.provider ?? "gemini"}:${creds.apiKey}`).digest("hex");
 
 /** Candidate models for this key (cached per server instance) unless the person chose one explicitly. */
 async function resolveModels(creds: GeminiCredentials): Promise<string[]> {
@@ -96,9 +137,10 @@ async function resolveModels(creds: GeminiCredentials): Promise<string[]> {
   const key = cacheKeyFor(creds);
   let pending = modelCache.get(key);
   if (!pending) {
-    pending = listModels(creds.apiKey)
+    const provider = creds.provider ?? "gemini";
+    pending = (provider === "openai" ? listOpenAiModels(creds.apiKey) : listModels(creds.apiKey))
       .then((names) => {
-        const ranked = rankModels(names).slice(0, MAX_MODEL_CANDIDATES);
+        const ranked = (provider === "openai" ? rankOpenAiModels(names) : rankModels(names)).slice(0, MAX_MODEL_CANDIDATES);
         return ranked.length ? ranked : [creds.model];
       })
       .catch(() => [creds.model]);
@@ -113,8 +155,38 @@ const tryNextModel = (err: unknown) => {
   return status === 404 || status === 429 || (status !== null && status >= 500);
 };
 
+/** Flattens text parts for providers that take plain text (media is transcribed separately for OpenAI). */
+function textOnly(parts: Part[]): string {
+  if (parts.some((p) => p.inlineData || p.fileData)) {
+    throw new AppError("invalid_input", "This provider can't read recordings directly. Please type or record a voice message.");
+  }
+  return parts.map((p) => p.text ?? "").join("\n");
+}
+
+async function generateWithOpenAi(creds: GeminiCredentials, req: GenerateRequest): Promise<string> {
+  const client = openAiClient(creds.apiKey);
+  const text = textOnly(req.parts);
+  let lastError: unknown = null;
+  for (const model of await resolveModels(creds)) {
+    const timeout = AbortSignal.timeout(ATTEMPT_TIMEOUT_MS);
+    const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+    try {
+      const out = await openAiGenerate(client, model, { system: req.system, text, jsonSchema: req.jsonSchema, signal });
+      req.onModel?.(model);
+      return out;
+    } catch (err) {
+      if (req.signal?.aborted || !tryNextModel(err)) throw err;
+      logProviderError(err);
+      if (statusOf(err) === 404) modelCache.delete(cacheKeyFor(creds));
+      lastError = err;
+    }
+  }
+  throw lastError ?? new Error("No OpenAI model available");
+}
+
 const liveTransport: GeminiTransport = {
   async generate(creds, req) {
+    if (creds.provider === "openai") return generateWithOpenAi(creds, req);
     const ai = new GoogleGenAI({ apiKey: creds.apiKey });
     const candidates = await resolveModels(creds);
     let lastError: unknown = null;
@@ -158,9 +230,11 @@ export function setGeminiTransport(next: GeminiTransport | null): void {
   transport = next;
 }
 
+/** HTTP status from either SDK's error (Gemini ApiError, OpenAI APIError). */
 function statusOf(err: unknown): number | null {
   if (err instanceof ApiError) return err.status;
-  return null;
+  const status = (err as { status?: unknown } | null)?.status;
+  return typeof status === "number" ? status : null;
 }
 
 function isTransient(err: unknown): boolean {
@@ -173,17 +247,17 @@ function isTransient(err: unknown): boolean {
 function logProviderError(err: unknown): void {
   const status = statusOf(err);
   const raw = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-  const scrubbed = raw.replace(/AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z._-]{20,}/g, "<key>").slice(0, 300);
-  console.warn(`[gemini] provider error status=${status ?? "none"} ${scrubbed}`);
+  const scrubbed = raw.replace(/AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z._-]{20,}|sk-[0-9A-Za-z_-]{20,}/g, "<key>").slice(0, 300);
+  console.warn(`[ai] provider error status=${status ?? "none"} ${scrubbed}`);
 }
 
 function toAppError(err: unknown): AppError {
   logProviderError(err);
   const status = statusOf(err);
   if (status === 400 || status === 401 || status === 403) {
-    return new AppError("ai_key_missing", "Gemini did not accept this API key or model. Check Settings.");
+    return new AppError("ai_key_missing", "The AI provider did not accept this key or model. Check Settings.");
   }
-  if (status === 429) return new AppError("rate_limited", "Gemini quota reached. You can still send your own words.");
+  if (status === 429) return new AppError("rate_limited", "The AI quota is used up for now. You can still send your own words.");
   return new AppError("ai_unavailable", "Wording help is unavailable right now. You can still send your own words.");
 }
 
@@ -225,7 +299,9 @@ export async function generateJson<T>(
   req: Omit<GenerateRequest, "jsonSchema">,
   schema: ZodType<T>,
 ): Promise<JsonCallResult<T>> {
-  const jsonSchema = z.toJSONSchema(schema, { target: "draft-7" });
+  // Providers accept a plain JSON Schema object; the "$schema" marker is not needed.
+  const { $schema: _marker, ...jsonSchema } = z.toJSONSchema(schema, { target: "draft-7" }) as Record<string, unknown>;
+  void _marker;
   let model = creds.model;
   const onModel = (m: string) => {
     model = m;

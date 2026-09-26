@@ -14,7 +14,7 @@ Stack: Next.js 16 (App Router, `src/`), Drizzle + Postgres (Neon in prod, local 
 - `npm run seed:demo` resets the scripted `@intune.demo` accounts (see DEMO.md)
 
 ## Invariants (do not break)
-- Gemini keys: a person's own key (browser-only, sent per request in `x-gemini-key`) always wins; otherwise the operator's shared `GEMINI_API_KEY` env var is used, capped per user per day (`src/lib/gemini/access.ts`). Keys are never stored, logged, returned to clients, or put in LangGraph config/state.
+- AI keys (Gemini or OpenAI): a person's own key (browser-only, sent per request in `x-gemini-key` / `x-openai-key`, provider chosen with `x-ai-provider`) always wins; otherwise the operator's shared `GEMINI_API_KEY`, then `OPENAI_API_KEY`, is used, capped per user per day (`src/lib/gemini/access.ts`). Keys are never stored, logged, returned to clients, or put in LangGraph config/state. Video transcription needs Gemini.
 - No model output can set approval. Approval binds user, draft id, version, content hash and audience hash; any edit invalidates it. Publishing happens only in `publishMessage()` (one transaction, idempotency key unique per sender).
 - Manual messaging, phrases, block and report must work with no key and with Gemini down.
 - Every route checks session + ownership/membership; unrelated users get a non-disclosing 404.

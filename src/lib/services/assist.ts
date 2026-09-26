@@ -14,6 +14,8 @@ import {
 } from "@/lib/graph/assist-graph";
 import { deleteCheckpoints, getCheckpointer } from "@/lib/graph/checkpointer";
 import { geminiMediaPart } from "@/lib/media/gemini-part";
+import { readObject } from "@/lib/media/storage";
+import { openAiTranscribe } from "@/lib/gemini/openai";
 import { recordEvent } from "@/lib/metrics";
 import { rateLimit } from "@/lib/rate-limit";
 import { MAX_MESSAGE_CHARS, type WordingMode } from "@/lib/validation";
@@ -70,6 +72,17 @@ function makeDeps(job: Job, creds: GeminiCredentials, signal: AbortSignal, used:
       const row = await getOwnedMedia(job.ownerId, mediaId);
       return geminiMediaPart(creds, row);
     },
+    ...(creds.provider === "openai" && {
+      async transcribe(mediaId: string) {
+        const row = await getOwnedMedia(job.ownerId, mediaId);
+        const bytes = await readObject(row.storageKey);
+        if (!bytes) throw new AppError("not_found", "The recording is no longer available. Please record again.");
+        return openAiTranscribe(creds.apiKey, bytes, row.mime, row.kind).catch((err: unknown) => {
+          if (err instanceof AppError) throw err;
+          throw new AppError("ai_unavailable", "Couldn't turn the recording into words. Try again, or type instead.");
+        });
+      },
+    }),
     findPhrases: findRelevantPhrases,
     async onStage(stage) {
       await db().update(jobs).set({ stage, updatedAt: new Date() }).where(eq(jobs.id, job.id));
