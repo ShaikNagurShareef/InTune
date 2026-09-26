@@ -1,0 +1,175 @@
+{
+  "status": "partial",
+  "updated_at": "2026-09-26T02:28:14.729Z",
+  "disclosure": "InTune custom fixtures: scripted, labeled cases written by the team. Not a public benchmark, not clinical evidence. Human meaning-preservation review is pending; metrics below are automatic checks only.",
+  "runs": [
+    {
+      "baseline": "B0",
+      "split": "dev",
+      "model": "none",
+      "prompt_version": "p1-2026-09-25",
+      "fixtures_sha256": "9c1c6cceb3f323cd34e74f04ab379c04df223fbab500a24aeaa5221c0a9fac12",
+      "ran_at": "2026-09-26T02:28:08.508Z",
+      "metrics": {
+        "cases": 56,
+        "errors": 0,
+        "critical_keep": {
+          "hit": 49,
+          "total": 56,
+          "rate": 0.875
+        },
+        "negation_preserved_or_queried": {
+          "hit": 22,
+          "total": 22,
+          "rate": 1
+        },
+        "clarification_recall": {
+          "hit": 0,
+          "total": 10,
+          "rate": 0
+        },
+        "unnecessary_clarification": {
+          "hit": 0,
+          "total": 41,
+          "rate": 0
+        },
+        "clear_input_coverage": {
+          "hit": 41,
+          "total": 41,
+          "rate": 1
+        },
+        "forbidden_content": {
+          "hit": 0,
+          "total": 56,
+          "rate": 0
+        },
+        "invented_slots": {
+          "hit": 0,
+          "total": 56,
+          "rate": 0
+        },
+        "by_family": {
+          "rewrite": {
+            "hit": 15,
+            "total": 15,
+            "rate": 1
+          },
+          "ambiguous": {
+            "hit": 10,
+            "total": 10,
+            "rate": 1
+          },
+          "critical": {
+            "hit": 10,
+            "total": 10,
+            "rate": 1
+          },
+          "phrasebook": {
+            "hit": 1,
+            "total": 8,
+            "rate": 0.125
+          },
+          "injection": {
+            "hit": 8,
+            "total": 8,
+            "rate": 1
+          },
+          "simplify": {
+            "hit": 5,
+            "total": 5,
+            "rate": 1
+          }
+        },
+        "latency_ms": {
+          "n": 56,
+          "p50": 0,
+          "p95": 0
+        }
+      }
+    },
+    {
+      "baseline": "B0",
+      "split": "heldout",
+      "model": "none",
+      "prompt_version": "p1-2026-09-25",
+      "fixtures_sha256": "9c1c6cceb3f323cd34e74f04ab379c04df223fbab500a24aeaa5221c0a9fac12",
+      "ran_at": "2026-09-26T02:28:14.729Z",
+      "metrics": {
+        "cases": 54,
+        "errors": 0,
+        "critical_keep": {
+          "hit": 47,
+          "total": 54,
+          "rate": 0.87
+        },
+        "negation_preserved_or_queried": {
+          "hit": 13,
+          "total": 13,
+          "rate": 1
+        },
+        "clarification_recall": {
+          "hit": 0,
+          "total": 10,
+          "rate": 0
+        },
+        "unnecessary_clarification": {
+          "hit": 0,
+          "total": 39,
+          "rate": 0
+        },
+        "clear_input_coverage": {
+          "hit": 39,
+          "total": 39,
+          "rate": 1
+        },
+        "forbidden_content": {
+          "hit": 2,
+          "total": 54,
+          "rate": 0.037
+        },
+        "invented_slots": {
+          "hit": 0,
+          "total": 54,
+          "rate": 0
+        },
+        "by_family": {
+          "rewrite": {
+            "hit": 15,
+            "total": 15,
+            "rate": 1
+          },
+          "ambiguous": {
+            "hit": 10,
+            "total": 10,
+            "rate": 1
+          },
+          "critical": {
+            "hit": 10,
+            "total": 10,
+            "rate": 1
+          },
+          "phrasebook": {
+            "hit": 0,
+            "total": 7,
+            "rate": 0
+          },
+          "injection": {
+            "hit": 5,
+            "total": 7,
+            "rate": 0.714
+          },
+          "simplify": {
+            "hit": 5,
+            "total": 5,
+            "rate": 1
+          }
+        },
+        "latency_ms": {
+          "n": 54,
+          "p50": 0,
+          "p95": 0
+        }
+      }
+    }
+  ]
+}

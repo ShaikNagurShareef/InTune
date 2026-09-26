@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+/* InTune palette: warm paper and ink, with semantic accents.
+   teal = act / confirm, clay = attention / meaning changed, amber = uncertain, sage = done. */
+:root {
+  --paper: #fbf7f0;
+  --paper-2: #f3ece0;
+  --card: #fffdf8;
+  --ink: #1f2a2e;
+  --ink-2: #4a5559;
+  --line: #e4dccd;
+  --teal: #1f6f6b;
+  --teal-ink: #ffffff;
+  --teal-soft: #d9ece9;
+  --clay: #b0472d;
+  --clay-soft: #f7e1d9;
+  --amber-soft: #fbeabf;
+  --amber-ink: #6b4a00;
+  --sage: #3d7a4e;
+  --sage-soft: #e0efe2;
+  --focus: #1f6f6b;
+  --shadow: 0 1px 0 rgba(31, 42, 46, 0.06), 0 8px 24px -12px rgba(31, 42, 46, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #171512;
+    --paper-2: #211e1a;
+    --card: #1d1a16;
+    --ink: #f1ebe0;
+    --ink-2: #bfb6a7;
+    --line: #3a342c;
+    --teal: #5fb3ac;
+    --teal-ink: #0f1f1e;
+    --teal-soft: #1d3533;
+    --clay: #e58b6f;
+    --clay-soft: #3b231b;
+    --amber-soft: #3d3218;
+    --amber-ink: #f3d68c;
+    --sage: #8cc79a;
+    --sage-soft: #1e3123;
+    --focus: #8fd6cf;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 10px 30px -14px rgba(0, 0, 0, 0.7);
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-teal: var(--teal);
+  --color-teal-ink: var(--teal-ink);
+  --color-teal-soft: var(--teal-soft);
+  --color-clay: var(--clay);
+  --color-clay-soft: var(--clay-soft);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-ink: var(--amber-ink);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+  --font-sans: var(--font-atkinson);
+  --font-display: var(--font-fraunces);
+}
+
+/* Reading-size preference (FR02) scales the whole interface; tested for reflow at 320px and 200% zoom. */
+html {
+  font-size: 100%;
+}
+html[data-text-size="lg"] {
+  font-size: 118.75%;
+}
+html[data-text-size="xl"] {
+  font-size: 137.5%;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-atkinson), system-ui, sans-serif;
+  line-height: 1.55;
+}
+
+.font-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+}
+
+/* Paper grain for atmosphere; purely decorative. */
+.grain {
+  background-image: radial-gradient(rgba(31, 42, 46, 0.035) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+.sr-only-focusable:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

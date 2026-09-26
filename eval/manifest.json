@@ -1,0 +1,31 @@
+{
+  "generated": "2026-09-25",
+  "custom_fixtures": {
+    "file": "eval/fixtures/custom.jsonl",
+    "builder": "eval/fixtures/build_fixtures.py",
+    "sha256": "9c1c6cceb3f323cd34e74f04ab379c04df223fbab500a24aeaa5221c0a9fac12",
+    "license": "Project-authored, scripted, non-sensitive content",
+    "cases": 110,
+    "splits": { "dev": 56, "heldout": 54 },
+    "families": {
+      "rewrite": 30, "ambiguous": 20, "critical": 20, "phrasebook": 15, "injection": 15, "simplify": 10
+    },
+    "split_rule": "By scenario index within each family (even = dev, odd = held-out); paraphrases never cross splits.",
+    "not_included": [
+      { "family": "capture_failure", "planned": 10, "reason": "Needs recorded audio from consenting speakers; covered today by manual-fallback unit tests (no_speech, multiple_speakers) and not scored here." },
+      { "family": "end_to_end_exchange", "planned": 20, "reason": "Run as Playwright scenarios with a stubbed model, and as live rehearsals; not scored in this text harness." }
+    ]
+  },
+  "public_datasets": [
+    { "name": "LibriSpeech", "source": "https://www.openslr.org/12", "status": "deferred", "reason": "Audio subset download and cloud-processing check not done in the build window." },
+    { "name": "TORGO", "source": "https://www.cs.toronto.edu/~complingweb/data/TORGO/torgo.html", "status": "deferred", "reason": "Access and cloud-processing terms not confirmed. Dysarthria is not a proxy for autism." },
+    { "name": "UASpeech", "source": "https://speechtechnology.web.illinois.edu/uaspeech/", "status": "deferred", "reason": "Access requires authorization." },
+    { "name": "ASSET", "source": "https://github.com/facebookresearch/asset", "status": "deferred", "reason": "SARI scoring not implemented yet; license (CC BY-NC 4.0) allows research use." }
+  ],
+  "baselines": {
+    "B0": "Original input as the message, no model.",
+    "B1": "One Gemini compose prompt; no phrasebook, no meaning check, no clarification loop.",
+    "B2": "Production LangGraph workflow: phrasebook retrieval, compose, meaning check (model + deterministic critical slots), up to two clarification rounds."
+  },
+  "judging": "Automatic checks only (critical-token survival, negation, forbidden content, invented numbers/times, clarification behaviour). No LLM judges its own fidelity. Two-reviewer human labels on held-out cases are pending."
+}
