@@ -118,10 +118,14 @@ function generationLimits(model: string) {
 const THINKING_HEADROOM = 5;
 
 /**
- * Orders the Flash models a key can call: newest stable version first, then the "latest" alias, then
- * lighter variants as a last resort. Each model has its own capacity and quota, so later entries are
- * fallbacks when one is overloaded (503) or out of quota (429).
+ * Orders the Flash models a key can call: the newest stable versions first, then the "latest" alias,
+ * then Flash-Lite (usually the least busy), then older versions. Each model has its own capacity and
+ * quota, so later entries are fallbacks when one is overloaded (503) or out of quota (429); mixing
+ * families means one busy family can't exhaust every fallback.
  */
+const TOP_STABLE = 3;
+const TOP_LITE = 2;
+
 export function rankModels(names: string[]): string[] {
   const flash = names.filter((n) => n.includes("flash") && !/(image|tts|live|audio|embedding|exp|preview|thinking|8b)/.test(n));
   const version = (n: string) => Number(/^gemini-(\d+(?:\.\d+)?)-flash/.exec(n)?.[1] ?? NaN);
@@ -132,14 +136,14 @@ export function rankModels(names: string[]): string[] {
   const lite = flash
     .filter((n) => /^gemini-\d+(?:\.\d+)?-flash-lite$/.test(n) || n === "gemini-flash-lite-latest")
     .sort((a, b) => (version(b) || 0) - (version(a) || 0));
-  return [...new Set([...stable, ...latest, ...lite])];
+  return [...new Set([...stable.slice(0, TOP_STABLE), ...latest, ...lite.slice(0, TOP_LITE), ...stable.slice(TOP_STABLE), ...lite])];
 }
 
 export function pickModel(names: string[]): string | null {
   return rankModels(names)[0] ?? null;
 }
 
-const MAX_MODEL_CANDIDATES = 5;
+const MAX_MODEL_CANDIDATES = 6;
 const modelCache = new Map<string, Promise<string[]>>();
 const keyHash = (provider: AiProviderId, apiKey: string) => createHash("sha256").update(`${provider}:${apiKey}`).digest("hex");
 

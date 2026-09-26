@@ -1,5 +1,6 @@
 /** Pinned defaults (spec §7 "Gemini selection and budgets"). Users may pick another model in Settings. */
-export const DEFAULT_MODEL = "gemini-2.5-flash";
+/** Only used when a key's model list can't be read; the alias tracks Google's current Flash (2.5 is retired for new keys). */
+export const DEFAULT_MODEL = "gemini-flash-latest";
 
 /** Preference order when choosing a default from the models a key can access. */
 export const PREFERRED_MODELS = ["gemini-2.5-flash", "gemini-3-flash", "gemini-flash-latest", "gemini-2.0-flash"];
