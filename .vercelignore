@@ -6,5 +6,5 @@ playwright-report
 *.docx
 
 # Demo video assets and pipeline (not part of the web app)
-media/
-video/
+/media/
+/video/
