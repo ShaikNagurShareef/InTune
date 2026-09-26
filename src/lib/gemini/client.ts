@@ -276,7 +276,7 @@ function toAppError(err: unknown): AppError {
     return new AppError("ai_key_missing", "The AI provider did not accept this key or model. Check Settings.");
   }
   if (status === 429) return new AppError("rate_limited", "The AI quota is used up for now. You can still send your own words.");
-  return new AppError("ai_unavailable", "Wording help is unavailable right now. You can still send your own words.");
+  return new AppError("ai_unavailable", "AI translation is busy right now (all models are at capacity). Try again in a minute, or send your own words.");
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -339,7 +339,7 @@ export async function generateJson<T>(
   );
   const repaired = tryParse(second, schema);
   if (repaired) return { data: repaired, repaired: true, model };
-  throw new AppError("ai_malformed", "Wording help returned an unusable answer. Please edit your message directly.");
+  throw new AppError("ai_malformed", "The translation came back unusable. Please edit your message directly.");
 }
 
 /** Lists models for the Settings "Test key" button. */

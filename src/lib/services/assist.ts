@@ -222,7 +222,7 @@ async function runSegment(
     const appErr =
       err instanceof AppError
         ? err
-        : new AppError("ai_unavailable", "Wording help is unavailable right now. You can still send your own words.");
+        : new AppError("ai_unavailable", "AI translation is busy right now (all models are at capacity). Try again in a minute, or send your own words.");
     await failJob(job, appErr.code);
     const draft = await getOwnedDraft(job.ownerId, job.draftId).catch(() => null);
     if (draft?.mediaId && !draft.transcript) await eraseMedia(draft.mediaId);
